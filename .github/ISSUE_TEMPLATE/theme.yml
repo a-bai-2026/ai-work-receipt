@@ -1,0 +1,16 @@
+name: Theme proposal
+description: 提议或投稿新的小票主题
+body:
+  - type: input
+    id: name
+    attributes:
+      label: 主题名称
+    validations:
+      required: true
+  - type: textarea
+    id: concept
+    attributes:
+      label: 视觉概念与使用场景
+    validations:
+      required: true
+

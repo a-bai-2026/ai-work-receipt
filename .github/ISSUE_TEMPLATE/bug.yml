@@ -1,0 +1,26 @@
+name: Bug report
+description: 报告解析、统计或页面问题
+body:
+  - type: markdown
+    attributes:
+      value: 请勿粘贴真实会话、Prompt、代码、密钥或本地路径。
+  - type: input
+    id: version
+    attributes:
+      label: 版本
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: 系统
+      options: [macOS, Windows, Linux]
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+    validations:
+      required: true
+
