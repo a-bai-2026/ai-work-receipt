@@ -13,7 +13,6 @@ Codex AI 打工小票
   --theme <name>              默认主题：classic、diner、payroll
   --output <file>             指定生成的 HTML 文件，默认写入 ./codex-work-receipt-output/
   --data-dir <directory>      指定本地结构数据目录
-  --miniprogram-code <file>   指定正式小程序码 PNG/JPEG/SVG
   --no-open                   生成后不自动打开浏览器
   --help                      显示帮助
 `);
@@ -26,7 +25,6 @@ export function parseArgs(argv) {
     theme: "classic",
     output: null,
     dataDir: null,
-    miniProgramCode: null,
     open: true,
   };
 
@@ -35,7 +33,6 @@ export function parseArgs(argv) {
     ["--theme", "theme"],
     ["--output", "output"],
     ["--data-dir", "dataDir"],
-    ["--miniprogram-code", "miniProgramCode"],
   ]);
 
   for (let index = 0; index < argv.length; index += 1) {

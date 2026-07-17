@@ -28,13 +28,14 @@
 
 <p align="center">
   <a href="https://modelflare.dev/">
-    <img src="docs/images/sponsors/modelflare.jpg" alt="Modelflare" width="760">
+    <img src="docs/images/sponsors/modelflare-logo.png" alt="ModelFlare Logo" width="72">
   </a>
 </p>
 
 <p align="center">
-  感谢 <a href="https://modelflare.dev/"><strong>Modelflare</strong></a> 支持本项目。<br>
-  <sub>稳定访问前沿 AI 模型 API，提供广泛的模型覆盖、清晰的定价和用量可见性。</sub>
+  <a href="https://modelflare.dev/"><strong>ModelFlare</strong></a><br>
+  <a href="https://modelflare.dev/">modelflare.dev</a><br>
+  <sub>让个人开发者也能以很低的成本稳定接入前沿 AI 模型 API，价格友好、计费透明、用量清晰可见。</sub>
 </p>
 
 ## 三种小票主题
@@ -129,13 +130,6 @@ npx codex-work-receipt@latest --today \
   --output ./my-receipt.html
 ```
 
-指定小程序码图片：
-
-```bash
-npx codex-work-receipt@latest --latest \
-  --miniprogram-code /absolute/path/to/miniprogram-code.png
-```
-
 可用参数：
 
 | 参数 | 说明 |
@@ -146,7 +140,6 @@ npx codex-work-receipt@latest --latest \
 | `--theme <name>` | `classic`、`diner` 或 `payroll` |
 | `--output <file>` | 指定 HTML 输出路径 |
 | `--data-dir <directory>` | 指定本地结构历史目录 |
-| `--miniprogram-code <file>` | 指定小程序码 PNG、JPEG、WebP 或 SVG |
 | `--no-open` | 生成后不自动打开浏览器 |
 
 ## 本地保存的数据
@@ -178,7 +171,7 @@ npx codex-work-receipt@latest --latest \
 - `--today` 默认扫描最近 72 小时有变动的会话文件，再按事件日期筛选
 - 当前只支持 Codex；Cursor、WorkBuddy 等数据源仍在规划中
 - 网页端不直接导出图片，移动端渲染和保存由配套小程序完成
-- 如果发布包没有内置固定小程序码，网页会显示明确占位符，可通过参数手动指定
+- 正式发布包会内置固定的官方小程序码；当前资产缺失时，网页会显示明确占位符
 
 ## 本地开发
 
@@ -213,7 +206,7 @@ npm run receipt -- --latest
 - GPLv3 仅适用于本仓库中的电脑端项目，不覆盖配套小程序、后台服务或其他独立产品
 - 本项目是非 OpenAI 官方社区工具，与 OpenAI 无隶属或背书关系
 - Codex、Cursor、WorkBuddy 及相关名称和商标归各自权利人所有
-- Modelflare 赞助信息与小票统计、数据处理和模型配置相互独立
+- ModelFlare 赞助信息与小票统计、数据处理和模型配置相互独立
 
 ---
 

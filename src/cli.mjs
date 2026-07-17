@@ -62,10 +62,7 @@ async function main() {
   const outputFile = path.resolve(/\.html?$/i.test(requestedOutput) ? requestedOutput : `${requestedOutput}.html`);
   fs.mkdirSync(path.dirname(outputFile), { recursive: true });
 
-  const configuredMiniProgramCode = options.miniProgramCode
-    ? path.resolve(options.miniProgramCode)
-    : DEFAULT_MINIPROGRAM_CODE;
-  const miniProgramCodeDataUrl = imageAsDataUrl(configuredMiniProgramCode);
+  const miniProgramCodeDataUrl = imageAsDataUrl(DEFAULT_MINIPROGRAM_CODE);
 
   fs.writeFileSync(
     outputFile,

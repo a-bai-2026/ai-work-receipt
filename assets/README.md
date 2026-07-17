@@ -1,16 +1,11 @@
 # Assets
 
-把正式微信小程序码保存为：
+正式微信小程序码固定保存在：
 
 ```text
 assets/miniprogram-code.png
 ```
 
-或者运行时传入：
+它是配套小程序的公开入口素材，不包含小程序源码、AppID、密钥或后台配置。项目不提供自定义替换参数。
 
-```bash
-npm run receipt -- --latest --miniprogram-code /absolute/path/to/code.png
-```
-
-如果未提供图片，页面会显示明确的“待接入”占位符，不会生成伪造的小程序码。
-
+如果发布包中暂时没有这张图片，网页会显示明确的“待接入”占位符，不会生成伪造的小程序码。

@@ -25,13 +25,14 @@ The tool reads timestamps and numerical metadata from local Codex sessions. Gene
 
 <p align="center">
   <a href="https://modelflare.dev/">
-    <img src="docs/images/sponsors/modelflare.jpg" alt="Modelflare" width="760">
+    <img src="docs/images/sponsors/modelflare-logo.png" alt="ModelFlare Logo" width="72">
   </a>
 </p>
 
 <p align="center">
-  Thanks to <a href="https://modelflare.dev/"><strong>Modelflare</strong></a> for supporting this project.<br>
-  <sub>Stable API access to leading AI models, with broad model coverage, clear pricing, and usage visibility.</sub>
+  <a href="https://modelflare.dev/"><strong>ModelFlare</strong></a><br>
+  <a href="https://modelflare.dev/">modelflare.dev</a><br>
+  <sub>Stable access to leading AI model APIs at a very low cost, with developer-friendly pricing, transparent billing, and clear usage visibility.</sub>
 </p>
 
 ## Receipt themes
@@ -95,13 +96,6 @@ npx codex-work-receipt@latest --latest --no-open
 npx codex-work-receipt@latest --today --timezone Asia/Shanghai --output ./my-receipt.html
 ```
 
-Use a custom mini-program code image:
-
-```bash
-npx codex-work-receipt@latest --latest \
-  --miniprogram-code /absolute/path/to/miniprogram-code.png
-```
-
 Run `npx codex-work-receipt@latest --help` for the full option list.
 
 ## Privacy
@@ -145,7 +139,7 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md) be
 - GPLv3 applies only to the desktop project in this repository; it does not cover the companion mini program, backend services, or other independent products
 - This is an unofficial community project and is not affiliated with or endorsed by OpenAI
 - Codex and other product names belong to their respective owners
-- Modelflare sponsorship is independent from receipt statistics, local data processing, and model configuration
+- ModelFlare sponsorship is independent from receipt statistics, local data processing, and model configuration
 
 ---
 
