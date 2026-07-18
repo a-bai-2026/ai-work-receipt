@@ -10,6 +10,7 @@ import { parseArgs, printHelp } from "./core/args.mjs";
 import { collectMetrics } from "./core/metrics.mjs";
 import { encodeReceiptPayload } from "./core/qr-payload.mjs";
 import { buildReceiptRecord, persistReceiptRecord } from "./core/receipt-record.mjs";
+import { installCodexSkill } from "./core/skill-installer.mjs";
 import { formatNumber } from "./lib/time.mjs";
 import { loadCodexSessions } from "./parsers/codex.mjs";
 import { renderHtml } from "./renderers/html.mjs";
@@ -44,6 +45,13 @@ async function main() {
   const options = parseArgs(process.argv.slice(2));
   if (options.help) {
     printHelp();
+    return;
+  }
+  if (options.installSkill) {
+    const installed = installCodexSkill({ projectDir: PROJECT_DIR });
+    console.log(`AI 打工小票 Skill 已安装：${installed.targetDir}`);
+    console.log("以后可以直接对 Codex 说：给刚刚这次工作开一张 AI 打工小票。");
+    console.log("如果当前会话没有识别到新 Skill，请重启 Codex 后再试。");
     return;
   }
 

@@ -5,6 +5,7 @@ Codex AI 打工小票
 用法：
   npx codex-work-receipt@latest --latest
   npx codex-work-receipt@latest --today
+  npx codex-work-receipt@latest --install-skill
 
 选项：
   --latest                    统计最近活跃的 Codex 会话（默认）
@@ -13,6 +14,7 @@ Codex AI 打工小票
   --theme <name>              默认主题：classic、diner、payroll
   --output <file>             指定生成的 HTML 文件，默认写入 ./codex-work-receipt-output/
   --data-dir <directory>      指定本地结构数据目录
+  --install-skill             安装可通过自然语言调用的 Codex Skill
   --no-open                   生成后不自动打开浏览器
   --help                      显示帮助
 `);
@@ -25,6 +27,7 @@ export function parseArgs(argv) {
     theme: "classic",
     output: null,
     dataDir: null,
+    installSkill: false,
     open: true,
   };
 
@@ -39,6 +42,7 @@ export function parseArgs(argv) {
     const argument = argv[index];
     if (argument === "--latest") result.mode = "latest";
     else if (argument === "--today") result.mode = "today";
+    else if (argument === "--install-skill") result.installSkill = true;
     else if (argument === "--no-open") result.open = false;
     else if (argument === "--help" || argument === "-h") result.help = true;
     else if (optionsWithValues.has(argument)) {

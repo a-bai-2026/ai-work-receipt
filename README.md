@@ -97,6 +97,24 @@ Codex 本地会话
 
 数据二维码只携带版本化的脱敏统计，不携带图片和原始会话。桌面端与小程序端分别根据同一份结构数据渲染小票。
 
+## 直接跟 Codex 说
+
+只需安装一次 AI 打工小票 Skill：
+
+```bash
+npx codex-work-receipt@latest --install-skill
+```
+
+以后可以直接对 Codex 说：
+
+> 给刚刚这次工作开一张 AI 打工小票。
+
+> 生成我今天的 AI 打工小票，使用复古粉票。
+
+Codex 会自动判断 `--latest` 或 `--today`、选择主题、执行命令并打开生成的网页。也可以通过 `$ai-work-receipt` 显式调用。
+
+Skill 安装在用户目录 `~/.agents/skills/ai-work-receipt/`，不会写入当前代码仓库；如果当前会话没有识别到，请重启 Codex。
+
 ## 它能做什么
 
 - 统计最近一次 Codex 会话，或汇总今天的全部活动
@@ -106,6 +124,7 @@ Codex 本地会话
 - 根据工作量生成娱乐化的 AI 工分、今日工种和点评
 - 生成可供配套小程序扫描的 `cwr1` 数据二维码
 - 在本机保存结构 JSON 和去重后的历史记录
+- 安装可通过自然语言触发的 Codex Skill
 - 全程不上传 Prompt、回复、代码或项目路径
 
 ## 常用命令
@@ -140,6 +159,7 @@ npx codex-work-receipt@latest --today \
 | `--theme <name>` | `classic`、`diner` 或 `payroll` |
 | `--output <file>` | 指定 HTML 输出路径 |
 | `--data-dir <directory>` | 指定本地结构历史目录 |
+| `--install-skill` | 将 AI 打工小票 Skill 安装到当前用户的 Codex |
 | `--no-open` | 生成后不自动打开浏览器 |
 
 ## 本地保存的数据

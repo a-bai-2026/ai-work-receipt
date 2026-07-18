@@ -15,6 +15,7 @@
   "license": "GPL-3.0-only",
   "keywords": [
     "codex",
+    "codex-skill",
     "receipt",
     "developer-tools",
     "local-first",
@@ -26,10 +27,11 @@
   "scripts": {
     "receipt": "node src/cli.mjs",
     "test": "node --test",
-    "check": "node --check src/cli.mjs"
+    "check": "node --check src/cli.mjs && node --check src/core/skill-installer.mjs"
   },
   "files": [
     "src",
+    "skills",
     "templates",
     "assets",
     "README.md",

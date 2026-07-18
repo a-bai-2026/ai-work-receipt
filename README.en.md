@@ -78,6 +78,24 @@ Local Codex sessions
 
 The companion mini program supports QR import, local history, themes, and image export. Scan the official mini-program code with WeChat, then scan the adjacent data QR code to import the current receipt.
 
+## Ask Codex directly
+
+Install the AI Work Receipt skill once:
+
+```bash
+npx codex-work-receipt@latest --install-skill
+```
+
+Then ask Codex naturally:
+
+> Create an AI work receipt for my latest Codex session.
+
+> Generate today's AI work receipt with the diner theme.
+
+Codex will select the correct mode and theme, run the CLI, and open the generated page. You can also invoke `$ai-work-receipt` explicitly.
+
+The skill is installed at `~/.agents/skills/ai-work-receipt/` and does not modify the current repository. Restart Codex if the current session does not detect it.
+
 ## Features
 
 - Latest-session and today summaries
@@ -86,6 +104,7 @@ The companion mini program supports QR import, local history, themes, and image 
 - Playful AI work points, job titles, and reviews
 - Versioned `cwr1` QR payload for mobile import
 - Local JSON snapshots and deduplicated history
+- Installable Codex skill for natural-language generation
 - No prompt, response, code, path, or file-name export
 
 ## Common options
