@@ -75,7 +75,7 @@ Codex 会选择统计范围和主题、执行命令并打开小票。详见 [Cod
 
 ## License
 
-电脑端源码采用 [GNU GPL v3](LICENSE)（`GPL-3.0-only`）。本仓库不包含配套小程序和后台服务源码；本项目是非 OpenAI 官方社区工具。
+电脑端源码采用 [GNU GPL v3](LICENSE)（`GPL-3.0-only`）。本项目是非 OpenAI 官方社区工具。
 
 ---
 

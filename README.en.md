@@ -75,7 +75,7 @@ The desktop page generates a privacy-safe data QR code. The companion WeChat min
 
 ## License
 
-The desktop source is licensed under [GNU GPL v3](LICENSE) (`GPL-3.0-only`). This repository does not contain the companion mini-program or backend source code. This is an unofficial community project and is not affiliated with OpenAI.
+The desktop source is licensed under [GNU GPL v3](LICENSE) (`GPL-3.0-only`). This is an unofficial community project and is not affiliated with OpenAI.
 
 ---
 
