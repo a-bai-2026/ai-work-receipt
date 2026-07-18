@@ -76,9 +76,7 @@ Local Codex sessions
   → change themes, save, and share
 ```
 
-The companion mini program supports QR import, local history, themes, and image export. It is a separate mobile product: **this repository does not include its source code, AppID, backend, or service credentials**.
-
-The generated desktop page includes the fixed official mini-program code. Scan it with WeChat to open the companion mini program, then scan the adjacent data QR code to import the current receipt.
+The companion mini program supports QR import, local history, themes, and image export. Scan the official mini-program code with WeChat, then scan the adjacent data QR code to import the current receipt.
 
 ## Features
 
@@ -141,7 +139,6 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md) be
 - GPLv3 applies only to the desktop project in this repository; it does not cover the companion mini program, backend services, or other independent products
 - This is an unofficial community project and is not affiliated with or endorsed by OpenAI
 - Codex and other product names belong to their respective owners
-- ModelFlare sponsorship is independent from receipt statistics, local data processing, and model configuration
 
 ---
 
