@@ -10,73 +10,33 @@
 </p>
 
 <p align="center">
+  <a href="https://www.npmjs.com/package/codex-work-receipt"><img alt="npm" src="https://img.shields.io/npm/v/codex-work-receipt?color=42CDA7"></a>
   <img alt="Node.js 20+" src="https://img.shields.io/badge/Node.js-20%2B-339933?logo=node.js&logoColor=white">
-  <img alt="Local first" src="https://img.shields.io/badge/data-local--first-17231F">
-  <img alt="Privacy first" src="https://img.shields.io/badge/privacy-no%20prompts%20or%20code-42CDA7">
+  <img alt="GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-17231F">
+  <img alt="Local first" src="https://img.shields.io/badge/data-local--first-42CDA7">
 </p>
 
 <p align="center">
   <img src="docs/images/readme-hero.jpg" alt="Three Codex Work Receipt themes" width="920">
 </p>
 
-The tool reads timestamps and numerical metadata from local Codex sessions. Generated receipts do not contain prompts, responses, source code, project paths, or file names.
+Codex Work Receipt summarizes turns, tool calls, Tokens, duration, and models, then turns them into playful AI work points, a job title, and a review. Receipts never include prompts, responses, source code, project paths, or file names.
 
-## Sponsor
+## Quickstart
 
-<p align="center">
-  <a href="https://modelflare.dev/">
-    <img src="docs/images/sponsors/modelflare-logo.png" alt="ModelFlare Logo" width="72">
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://modelflare.dev/"><strong>ModelFlare</strong></a><br>
-  <a href="https://modelflare.dev/">modelflare.dev</a><br>
-  <sub>Stable access to leading AI model APIs at a very low cost, with developer-friendly pricing, transparent billing, and clear usage visibility.</sub>
-</p>
-
-## Receipt themes
-
-<table>
-  <tr>
-    <td align="center"><strong>Classic</strong></td>
-    <td align="center"><strong>Vintage Diner</strong></td>
-    <td align="center"><strong>Night Payroll</strong></td>
-  </tr>
-  <tr>
-    <td><img src="docs/images/receipts/receipt-classic.jpg" alt="Classic work receipt" width="320"></td>
-    <td><img src="docs/images/receipts/receipt-diner.jpg" alt="Vintage diner work receipt" width="320"></td>
-    <td><img src="docs/images/receipts/receipt-payroll.jpg" alt="Night payroll work receipt" width="320"></td>
-  </tr>
-</table>
-
-## Quick start
-
-Requires Node.js 20+ and local Codex session records.
+Requires Node.js 20+ and local Codex session records. No clone required:
 
 ```bash
 npx codex-work-receipt@latest --latest --lang en
 ```
 
-Summarize all Codex activity from today in your local timezone:
+Summarize all Codex activity from today:
 
 ```bash
 npx codex-work-receipt@latest --today --lang en
 ```
 
-Outputs are written to `./codex-work-receipt-output/` by default.
-
-## Desktop-to-mobile flow
-
-```text
-Local Codex sessions
-  → run one command
-  → generate an HTML receipt and data QR code
-  → scan from the companion mini program
-  → change themes, save, and share
-```
-
-The companion mini program supports QR import, local history, themes, and image export. Scan the official mini-program code with WeChat, then scan the adjacent data QR code to import the current receipt.
+HTML and structured data are written to `./codex-work-receipt-output/` by default. See the [CLI guide](docs/cli.en.md) for themes, timezones, custom output paths, and all options.
 
 ## Ask Codex directly
 
@@ -86,79 +46,36 @@ Install the AI Work Receipt skill once:
 npx codex-work-receipt@latest --install-skill --lang en
 ```
 
-Then ask Codex naturally:
+Then ask Codex:
 
 > Create an AI work receipt for my latest Codex session.
 
-> Generate today's AI work receipt with the diner theme.
+Codex will choose the range and theme, run the CLI, and open the receipt. See the [Codex Skill guide](docs/codex-skill.en.md).
 
-Codex will select the correct mode and theme, run the CLI, and open the generated page. You can also invoke `$ai-work-receipt` explicitly.
+## Desktop to mobile
 
-The skill is installed at `~/.agents/skills/ai-work-receipt/` and does not modify the current repository. Restart Codex if the current session does not detect it.
+The desktop page generates a privacy-safe data QR code. The companion WeChat mini program supports QR import, local history, themes, and image export. See [mobile import](docs/mobile-import.en.md).
 
-## Features
+## Docs
 
-- Latest-session and today summaries
-- Complete Chinese and English receipt copy
-- Three visual receipt themes
-- Turns, user messages, tool calls, interruptions, Tokens, duration, and models
-- Playful AI work points, job titles, and reviews
-- Versioned `cwr1` QR payload for mobile import
-- Local JSON snapshots and deduplicated history
-- Installable Codex skill for natural-language generation
-- No prompt, response, code, path, or file-name export
+- [CLI usage and options](docs/cli.en.md)
+- [Codex Skill](docs/codex-skill.en.md)
+- [Mobile QR import](docs/mobile-import.en.md)
+- [Data schema and QR protocol](docs/data-schema.en.md)
+- [Local data and privacy](docs/privacy.en.md)
+- [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
 
-## Common options
+## Sponsor
 
-```bash
-npx codex-work-receipt@latest --latest --lang en --theme diner
-npx codex-work-receipt@latest --latest --lang en --no-open
-npx codex-work-receipt@latest --today --lang en --timezone Asia/Shanghai --output ./my-receipt.html
-```
+<p align="center">
+  <a href="https://modelflare.dev/"><img src="docs/images/sponsors/modelflare-logo.png" alt="ModelFlare Logo" width="56"></a><br>
+  <a href="https://modelflare.dev/"><strong>ModelFlare</strong></a> · <a href="https://modelflare.dev/">modelflare.dev</a><br>
+  <sub>Stable access to leading AI model APIs at a very low cost, with transparent pricing and clear usage.</sub>
+</p>
 
-Run `npx codex-work-receipt@latest --help` for the full option list.
+## License
 
-## Privacy
-
-- Reads `~/.codex/sessions/**/*.jsonl` by default
-- Extracts event types, timestamps, model names, and numerical statistics only
-- Does not store prompts, responses, source code, project paths, or file names
-- Does not send session data over the network while running
-- Saves HTML and structured history locally
-
-See [docs/privacy.md](docs/privacy.md) and [docs/data-schema.md](docs/data-schema.md).
-
-## Open-source boundary
-
-This repository contains the desktop CLI, receipt renderer, QR data protocol, tests, and documentation. It does not contain the companion mini-program source code or server implementation.
-
-## Local development
-
-```bash
-git clone https://github.com/a-bai-2026/ai-work-receipt.git
-cd codex-work-receipt
-npm install
-npm test
-npm run receipt -- --latest
-```
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md) before contributing. Never submit real Codex sessions.
-
-## Roadmap
-
-- More receipt themes
-- Cursor and WorkBuddy data sources
-- Cross-tool activity reports
-- Weekly and monthly AI work archives
-- More parser fixtures and end-to-end compatibility tests
-
-## License and disclaimer
-
-- The desktop source code in this repository is licensed under [GNU GPL v3](LICENSE) (`GPL-3.0-only`)
-- Modified or redistributed versions must continue to comply with GPLv3 and provide the corresponding source code
-- GPLv3 applies only to the desktop project in this repository; it does not cover the companion mini program, backend services, or other independent products
-- This is an unofficial community project and is not affiliated with or endorsed by OpenAI
-- Codex and other product names belong to their respective owners
+The desktop source is licensed under [GNU GPL v3](LICENSE) (`GPL-3.0-only`). This repository does not contain the companion mini-program or backend source code. This is an unofficial community project and is not affiliated with OpenAI.
 
 ---
 
