@@ -24,6 +24,16 @@ Codex Work Receipt summarizes turns, tool calls, Tokens, duration, and models, t
 
 Version `0.6.0` uses the cwr2 protocol to create stable privacy-safe facts for each session and calendar day. Overlapping today, last-seven-days, and this-week receipts can be deduplicated by the receiver, and oversized payloads are automatically split into reorderable multipart QR codes that rotate one at a time in the HTML so the camera never sees multiple data codes at once.
 
+## Meet Ticket Buddy
+
+<p align="center">
+  <a href="docs/codex-pet.en.md"><img src="docs/images/codex-pet-showcase.png" alt="Ticket Buddy in idle, working, needs-input, ready, and failed states" width="920"></a>
+</p>
+
+<p align="center">
+  <sub>Ticket Buddy changes expression as Codex becomes idle, runs a task, needs input, finishes, or gets blocked. Select the image for setup and state details.</sub>
+</p>
+
 ## Quickstart
 
 Requires Node.js 20+ and local Codex session records. No clone required; choose today, the last 3 hours, the last 7 days, this week, or a specific session:
