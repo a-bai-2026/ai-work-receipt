@@ -3,7 +3,12 @@ import { createRequire } from "node:module";
 
 import { buildCode128B } from "../core/barcode.mjs";
 import { formatDate, formatDuration, formatNumber, formatTime } from "../lib/time.mjs";
-import { buildCompensation, DEFAULT_LOCALE, getReceiptCopy } from "../core/presentation.mjs";
+import {
+  buildCompensation,
+  DEFAULT_LOCALE,
+  getReceiptCopy,
+  getScopeLabel,
+} from "../core/presentation.mjs";
 
 const require = createRequire(import.meta.url);
 const DOM_TO_IMAGE_SOURCE = fs.readFileSync(require.resolve("dom-to-image-more"), "utf8");
@@ -65,7 +70,7 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
   const rangeEndDate = record.period.range_end_date || formatDateKey(record.period.end_at.slice(0, 10), "zh-CN").replaceAll("/", "-");
   const isCalendarScope = new Set(["today", "last-7-days", "this-week"]).has(record.source.scope);
   const spansMultipleDates = rangeStartDate !== rangeEndDate;
-  const scopeLabel = copy.scope[record.source.scope] || copy.scope.latest;
+  const scopeLabel = getScopeLabel(record.source.scope, locale, record.source.hours);
   const dateRange = spansMultipleDates
     ? `${formatDateKey(rangeStartDate, locale)}—${formatDateKey(rangeEndDate, locale)}`
     : formatDateKey(rangeEndDate, locale);

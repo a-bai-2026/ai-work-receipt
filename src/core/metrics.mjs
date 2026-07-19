@@ -1,5 +1,10 @@
 import { dateKey, rowDate } from "../lib/time.mjs";
-import { calendarDayCount, isCalendarScope, isDateInRange } from "./range.mjs";
+import {
+  calendarDayCount,
+  isCalendarScope,
+  isDateInRange,
+  isTimeWindowScope,
+} from "./range.mjs";
 import { selectWorkProfileId } from "./presentation.mjs";
 
 function zeroUsage() {
@@ -28,7 +33,8 @@ function sessionTokenUsage(rows, range) {
   for (const row of events) {
     const currentUsage = row.payload.info.total_token_usage;
     const date = rowDate(row);
-    const selected = !isCalendarScope(range.scope) || isDateInRange(date, range);
+    const selected = (!isCalendarScope(range.scope) && !isTimeWindowScope(range.scope))
+      || isDateInRange(date, range);
 
     for (const key of Object.keys(totals)) {
       const current = Math.max(0, Number(currentUsage[key] || 0));
@@ -56,6 +62,7 @@ function calculateWorkPoints(metrics) {
 }
 
 function emptyRangeMessage(range) {
+  if (range.scope === "last-hours") return `最近 ${range.hours} 小时没有找到 Codex 活动`;
   if (range.scope === "today") return `没有找到 ${range.targetDate} 的 Codex 活动`;
   if (range.scope === "last-7-days") return `没有找到 ${range.startDate} 至 ${range.endDate} 的 Codex 活动`;
   if (range.scope === "this-week") return `本周暂时没有找到 Codex 活动`;
@@ -78,7 +85,7 @@ export function collectMetrics(sessions, range) {
   const models = new Set();
 
   for (const session of sessions) {
-    const scopedRows = isCalendarScope(range.scope)
+    const scopedRows = isCalendarScope(range.scope) || isTimeWindowScope(range.scope)
       ? session.rows.filter((row) => isDateInRange(rowDate(row), range))
       : session.rows;
 
@@ -134,6 +141,9 @@ export function collectMetrics(sessions, range) {
     targetDate: range.targetDate,
     rangeStartDate,
     rangeEndDate,
+    windowStartAt: range.startAt,
+    windowEndAt: range.endAt,
+    windowHours: range.hours,
     calendarDayCount: isCalendarScope(range.scope) ? calendarDayCount(range) : 1,
     activeDayCount: Math.max(1, activeDateKeys.size),
     sessionIds,

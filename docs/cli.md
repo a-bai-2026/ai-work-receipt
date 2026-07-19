@@ -17,7 +17,7 @@
 npx codex-work-receipt@latest
 ```
 
-命令行会让你选择：今天全部活动、最近 7 个自然日、本周，或最近的某个具体会话。选择具体会话时会展示起止时间、轮次、工具调用和模型，帮助辨认。
+命令行会让你选择：今天全部活动、最近 3 小时、最近 7 个自然日、本周，或最近的某个具体会话。选择具体会话时会展示起止时间、轮次、工具调用和模型，帮助辨认。
 
 ## 非交互统计范围
 
@@ -32,6 +32,14 @@ npx codex-work-receipt@latest --latest
 ```bash
 npx codex-work-receipt@latest --today
 ```
+
+最近 3 小时：
+
+```bash
+npx codex-work-receipt@latest --hours 3
+```
+
+`--hours` 支持 1～168 的整数，并按精确时间戳筛选，可以跨越午夜。滚动小时小票使用兼容的 cwr1 摘要协议，不会写入 cwr2 的“会话 × 自然日”规范事实。
 
 最近 7 个自然日（含今天）：
 
@@ -99,7 +107,8 @@ npx codex-work-receipt@latest --latest --no-open
 
 | 参数 | 说明 |
 | --- | --- |
-| `--range <name>` | `latest`、`today`、`last-7-days` 或 `this-week` |
+| `--range <name>` | `latest`、`last-hours`、`today`、`last-7-days` 或 `this-week` |
+| `--hours <number>` | 统计最近 1～168 小时；等价于 `last-hours` 范围 |
 | `--latest` | 统计最近活跃的 Codex 会话，默认模式 |
 | `--today` | 汇总指定时区今天发生的 Codex 活动 |
 | `--session <id>` | 统计指定的 Codex 会话 |
@@ -109,6 +118,9 @@ npx codex-work-receipt@latest --latest --no-open
 | `--output <file>` | 指定 HTML 输出路径 |
 | `--data-dir <directory>` | 指定本地结构历史目录 |
 | `--install-skill` | 安装 AI 打工小票 Codex Skill |
+| `--install-pet` | 只安装“票仔”Codex 桌宠 |
+| `--uninstall-pet` | 卸载“票仔”，不删除 Skill 或历史小票 |
+| `--install-companion` | 同时安装 Skill 和“票仔”Codex 桌宠 |
 | `--no-open` | 生成后不自动打开浏览器 |
 
 也可以随时运行：
@@ -133,5 +145,5 @@ npx codex-work-receipt@latest --help
 
 - 当前只支持 Codex；Cursor、WorkBuddy 等数据源仍在规划中
 - 暂不统计修改文件数和代码行数，避免不同工具调用方式产生误导
-- 时间范围按每条事件的本地日期筛选，并分别计算每个会话的 Token 区间增量
+- 自然日范围按本地日期筛选，滚动小时范围按精确时间戳筛选，并分别计算每个会话的 Token 区间增量
 - 桌面网页导出 PNG 使用浏览器本地渲染，不上传小票数据

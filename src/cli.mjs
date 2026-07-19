@@ -9,12 +9,13 @@ import QRCode from "qrcode";
 import { parseArgs, printHelp } from "./core/args.mjs";
 import { buildCanonicalFacts } from "./core/fact-buckets.mjs";
 import { collectMetrics } from "./core/metrics.mjs";
-import { getReceiptCopy } from "./core/presentation.mjs";
+import { getScopeLabel } from "./core/presentation.mjs";
 import { encodeReceiptPayloads } from "./core/qr-payload.mjs";
 import { outputSlugForRange, resolveRange } from "./core/range.mjs";
 import { buildReceiptRecord, persistReceiptRecord } from "./core/receipt-record.mjs";
 import { promptForRange } from "./core/selector.mjs";
 import { installCodexSkill } from "./core/skill-installer.mjs";
+import { installCodexPet, uninstallCodexPet } from "./core/pet-installer.mjs";
 import { formatNumber } from "./lib/time.mjs";
 import { listRecentCodexSessions, loadCodexSessions } from "./parsers/codex.mjs";
 import { renderHtml } from "./renderers/html.mjs";
@@ -64,6 +65,33 @@ async function main() {
     }
     return;
   }
+  if (options.installPet || options.installCompanion) {
+    const installedPet = installCodexPet({ projectDir: PROJECT_DIR });
+    const installedSkill = options.installCompanion
+      ? installCodexSkill({ projectDir: PROJECT_DIR })
+      : null;
+    if (options.locale === "en") {
+      if (installedSkill) console.log(`AI Work Receipt skill installed: ${installedSkill.targetDir}`);
+      console.log(`Codex pet installed: ${installedPet.targetDir}`);
+      console.log("Restart Codex, open Settings > Pets, select Refresh, then choose 票仔 · AI 小票工 (Ticket Buddy).");
+      console.log("Use /pet to wake it. You can then ask: Ticket Buddy, create a receipt for today.");
+    } else {
+      if (installedSkill) console.log(`AI 打工小票 Skill 已安装：${installedSkill.targetDir}`);
+      console.log(`Codex 桌宠已安装：${installedPet.targetDir}`);
+      console.log("请重启 Codex，打开 Settings > Pets，点击 Refresh 后选择“票仔 · AI 小票工”。");
+      console.log("输入 /pet 唤醒票仔；以后可以说：票仔，开今天的票。");
+    }
+    return;
+  }
+  if (options.uninstallPet) {
+    const removed = uninstallCodexPet();
+    if (options.locale === "en") {
+      console.log(removed.existed ? `Codex pet removed: ${removed.targetDir}` : "Codex pet was not installed.");
+    } else {
+      console.log(removed.existed ? `Codex 桌宠已卸载：${removed.targetDir}` : "尚未安装 AI 打工小票桌宠。");
+    }
+    return;
+  }
 
   if (!options.modeExplicit && process.stdin.isTTY && process.stdout.isTTY) {
     const selected = await promptForRange({
@@ -73,13 +101,16 @@ async function main() {
     });
     options.mode = selected.mode;
     options.sessionId = selected.sessionId;
+    options.hours = selected.hours || options.hours;
   }
 
-  const range = resolveRange(options.mode, options.timezone, new Date(), options.sessionId);
+  const range = resolveRange(options.mode, options.timezone, new Date(), options.sessionId, options.hours);
   const sessions = loadCodexSessions(range);
   const metrics = collectMetrics(sessions, range);
   const observedAt = new Date().toISOString();
-  const canonical = buildCanonicalFacts(sessions, range, { observedAt });
+  const canonical = range.scope === "last-hours"
+    ? {}
+    : buildCanonicalFacts(sessions, range, { observedAt });
   const record = buildReceiptRecord(metrics, options.theme, options.locale, canonical);
   const qrPayloads = encodeReceiptPayloads(record);
   const dataQrDataUrls = await Promise.all(qrPayloads.map((payload) => QRCode.toDataURL(payload, {
@@ -109,17 +140,21 @@ async function main() {
     console.log(`Generated HTML: ${outputFile}`);
     console.log(`Structured data: ${persisted.companionPath}`);
     console.log(`Local history: ${persisted.receiptPath}`);
-    console.log(`Range: ${getReceiptCopy(options.locale).scope[record.source.scope]} · ${record.stats.session_count} session(s)`);
+    console.log(`Range: ${getScopeLabel(record.source.scope, options.locale, record.source.hours)} · ${record.stats.session_count} session(s)`);
     console.log(`Stats: ${record.stats.completed_turns} turns · ${formatNumber(record.stats.tokens.total_tokens, options.locale)} Tokens · ${record.stats.tool_calls} tool calls`);
-    console.log(`Data QR: ${qrPayloads.length} code(s) · ${record.manifest.fact_count} canonical fact(s) · schema v${record.schema_version}`);
+    console.log(record.manifest
+      ? `Data QR: ${qrPayloads.length} code(s) · ${record.manifest.fact_count} canonical fact(s) · schema v${record.schema_version}`
+      : `Data QR: ${qrPayloads.length} code(s) · rolling summary · schema v${record.schema_version}`);
     if (!miniProgramCodeDataUrl) console.log("Mini-program code: not configured; using the explicit placeholder");
   } else {
     console.log(`已生成网页：${outputFile}`);
     console.log(`结构数据：${persisted.companionPath}`);
     console.log(`本地历史：${persisted.receiptPath}`);
-    console.log(`统计范围：${getReceiptCopy(options.locale).scope[record.source.scope]} · ${record.stats.session_count} 个会话`);
+    console.log(`统计范围：${getScopeLabel(record.source.scope, options.locale, record.source.hours)} · ${record.stats.session_count} 个会话`);
     console.log(`统计：${record.stats.completed_turns} 轮 · ${formatNumber(record.stats.tokens.total_tokens, options.locale)} Token · ${record.stats.tool_calls} 次工具调用`);
-    console.log(`数据二维码：${qrPayloads.length} 个 · ${record.manifest.fact_count} 条规范事实 · schema v${record.schema_version}`);
+    console.log(record.manifest
+      ? `数据二维码：${qrPayloads.length} 个 · ${record.manifest.fact_count} 条规范事实 · schema v${record.schema_version}`
+      : `数据二维码：${qrPayloads.length} 个 · 滚动摘要 · schema v${record.schema_version}`);
     if (!miniProgramCodeDataUrl) console.log("小程序码：尚未配置，页面使用明确占位符");
   }
   if (options.open) openFile(outputFile);

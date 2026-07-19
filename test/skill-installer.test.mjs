@@ -10,6 +10,12 @@ import {
   getCodexSkillInstallPath,
   installCodexSkill,
 } from "../src/core/skill-installer.mjs";
+import {
+  CODEX_PET_NAME,
+  getCodexPetInstallPath,
+  installCodexPet,
+  uninstallCodexPet,
+} from "../src/core/pet-installer.mjs";
 
 test("安装参数会切换到 Skill 安装模式", () => {
   const options = parseArgs(["--install-skill", "--lang", "en"]);
@@ -17,6 +23,12 @@ test("安装参数会切换到 Skill 安装模式", () => {
   assert.equal(options.mode, "latest");
   assert.equal(options.locale, "en");
   assert.throws(() => parseArgs(["--lang", "fr"]), /不支持的语言/);
+});
+
+test("Companion 与 Pet 参数会切换到对应安装模式", () => {
+  assert.equal(parseArgs(["--install-companion"]).installCompanion, true);
+  assert.equal(parseArgs(["--install-pet"]).installPet, true);
+  assert.equal(parseArgs(["--uninstall-pet"]).uninstallPet, true);
 });
 
 test("Codex Skill 会安装到用户目录并安全覆盖旧版本", () => {
@@ -38,4 +50,28 @@ test("Codex Skill 会安装到用户目录并安全覆盖旧版本", () => {
   assert.equal(fs.readFileSync(path.join(targetDir, "SKILL.md"), "utf8").includes("ai-work-receipt"), true);
   assert.equal(fs.existsSync(path.join(targetDir, "agents", "openai.yaml")), true);
   assert.equal(fs.existsSync(path.join(targetDir, "stale.txt")), false);
+});
+
+test("Codex Pet 会安装到 CODEX_HOME 并只卸载自己的目录", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-work-receipt-pet-"));
+  const projectDir = path.join(tempDir, "project");
+  const codexHome = path.join(tempDir, "codex-home");
+  const sourceDir = path.join(projectDir, "assets", "codex-pet", CODEX_PET_NAME);
+  const targetDir = getCodexPetInstallPath({ codexHome });
+  const otherPet = path.join(codexHome, "pets", "other-pet");
+
+  fs.mkdirSync(sourceDir, { recursive: true });
+  fs.writeFileSync(path.join(sourceDir, "pet.json"), '{"id":"ai-work-receipt"}\n', "utf8");
+  fs.writeFileSync(path.join(sourceDir, "spritesheet.webp"), "webp", "utf8");
+  fs.mkdirSync(otherPet, { recursive: true });
+  fs.writeFileSync(path.join(otherPet, "pet.json"), "{}\n", "utf8");
+
+  const installed = installCodexPet({ projectDir, codexHome });
+  assert.equal(installed.targetDir, targetDir);
+  assert.equal(fs.existsSync(path.join(targetDir, "pet.json")), true);
+
+  const removed = uninstallCodexPet({ codexHome });
+  assert.equal(removed.existed, true);
+  assert.equal(fs.existsSync(targetDir), false);
+  assert.equal(fs.existsSync(otherPet), true);
 });

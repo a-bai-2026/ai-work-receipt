@@ -3,6 +3,7 @@ import { dateKey } from "../lib/time.mjs";
 export const RECEIPT_SCOPES = new Set([
   "latest",
   "session",
+  "last-hours",
   "today",
   "last-7-days",
   "this-week",
@@ -11,6 +12,8 @@ export const RECEIPT_SCOPES = new Set([
 const SCOPE_ALIASES = new Map([
   ["latest", "latest"],
   ["session", "session"],
+  ["hours", "last-hours"],
+  ["last-hours", "last-hours"],
   ["today", "today"],
   ["7d", "last-7-days"],
   ["last-7-days", "last-7-days"],
@@ -38,7 +41,13 @@ function mondayDateKey(value) {
   return shiftDateKey(value, -daysSinceMonday);
 }
 
-export function resolveRange(scope, timezone, now = new Date(), sessionId = null) {
+function floorToMinute(value) {
+  const date = new Date(value);
+  date.setUTCSeconds(0, 0);
+  return date;
+}
+
+export function resolveRange(scope, timezone, now = new Date(), sessionId = null, hours = null) {
   const normalizedScope = normalizeScope(scope);
   if (!normalizedScope || !RECEIPT_SCOPES.has(normalizedScope)) {
     throw new Error(`不支持的统计范围：${scope}`);
@@ -47,8 +56,20 @@ export function resolveRange(scope, timezone, now = new Date(), sessionId = null
   const targetDate = dateKey(now, timezone);
   let startDate = null;
   let endDate = null;
+  let startAt = null;
+  let endAt = null;
+  let windowHours = null;
 
-  if (normalizedScope === "today") {
+  if (normalizedScope === "last-hours") {
+    windowHours = Number(hours ?? 3);
+    if (!Number.isInteger(windowHours) || windowHours < 1 || windowHours > 168) {
+      throw new Error("最近小时数必须是 1 至 168 之间的整数");
+    }
+    endAt = floorToMinute(now);
+    startAt = new Date(endAt.getTime() - windowHours * 60 * 60 * 1000);
+    startDate = dateKey(startAt, timezone);
+    endDate = dateKey(endAt, timezone);
+  } else if (normalizedScope === "today") {
     startDate = targetDate;
     endDate = targetDate;
   } else if (normalizedScope === "last-7-days") {
@@ -65,6 +86,9 @@ export function resolveRange(scope, timezone, now = new Date(), sessionId = null
     targetDate,
     startDate,
     endDate,
+    startAt,
+    endAt,
+    hours: windowHours,
     sessionId: sessionId || null,
   };
 }
@@ -73,8 +97,15 @@ export function isCalendarScope(scope) {
   return scope === "today" || scope === "last-7-days" || scope === "this-week";
 }
 
+export function isTimeWindowScope(scope) {
+  return scope === "last-hours";
+}
+
 export function isDateInRange(date, range) {
   if (!date) return false;
+  if (isTimeWindowScope(range.scope)) {
+    return date >= range.startAt && date <= range.endAt;
+  }
   if (!isCalendarScope(range.scope)) return true;
   const key = dateKey(date, range.timezone);
   return key >= range.startDate && key <= range.endDate;
@@ -107,6 +138,13 @@ export function outputSlugForRange(range, receiptId = "") {
   const endDate = range?.endDate || range?.targetDate || startDate;
 
   if (scope === "today") return `today-${safeSlugSegment(endDate, "today")}`;
+  if (scope === "last-hours") {
+    const endAt = range?.endAt instanceof Date ? range.endAt : new Date(range?.endAt || 0);
+    const endStamp = Number.isNaN(endAt.getTime())
+      ? safeSlugSegment(endDate, "window")
+      : endAt.toISOString().replace(/[-:]/g, "").slice(0, 13);
+    return `last-${Number(range?.hours || 3)}-hours-${safeSlugSegment(endStamp, "window")}`;
+  }
   if (scope === "last-7-days" || scope === "this-week") {
     const dateSpan = startDate === endDate ? endDate : `${startDate}-to-${endDate}`;
     return `${scope}-${safeSlugSegment(dateSpan, scope)}`;

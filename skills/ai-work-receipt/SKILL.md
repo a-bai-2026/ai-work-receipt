@@ -1,6 +1,6 @@
 ---
 name: ai-work-receipt
-description: Generate and open a privacy-first local AI work receipt from Codex session metadata. Use when the user asks Codex to create, regenerate, open, or locate an “AI 打工小票” or “AI work receipt” for the latest session, today, the last seven days, or this week, in Chinese or English. Do not use for real invoices, salary calculations, API billing, or non-Codex activity.
+description: Generate and open a privacy-first local AI work receipt from Codex session metadata. Use when the user asks Codex or 票仔 to create, regenerate, open, or locate an “AI 打工小票”, “工票”, or “AI work receipt” for the latest session, the last few hours, today, the last seven days, or this week, in Chinese or English. Do not use for real invoices, salary calculations, API billing, or non-Codex activity.
 ---
 
 # AI 打工小票
@@ -10,6 +10,9 @@ Use the published `codex-work-receipt` CLI as the only statistics and rendering 
 ## Interpret the request
 
 - Use `--latest` for “刚刚”“这次”“最近一次”“上一段工作” or an unspecified request for one receipt.
+- Use `--hours <N>` for “最近 N 小时”“过去 N 小时” or “近 N 小时”. Accept integers from 1 to 168.
+- Use `--hours 3` for an unspecified “最近几个小时”“过去几个小时” request.
+- Use `--hours 12` for “最近半天”.
 - Use `--today` for “今天”“今日”“今天全部工作” or a daily summary.
 - Use `--range last-7-days` for “最近七天”“近 7 日” or a rolling seven-calendar-day summary.
 - Use `--range this-week` for “本周”“这周” or a Monday-to-now summary.
@@ -21,6 +24,7 @@ Use the published `codex-work-receipt` CLI as the only statistics and rendering 
 - Use `--lang en` when the user requests English or asks for the receipt in English. Use `--lang zh-CN` otherwise.
 - If the user asks to choose interactively, run the CLI without a range flag so it can show the local selector.
 - If the user asks for an unsupported custom date range, explain the available ranges and do not invent flags.
+- Treat requests addressed to “票仔” the same as direct AI work receipt requests, for example “票仔，开今天的票”.
 
 ## Execute
 

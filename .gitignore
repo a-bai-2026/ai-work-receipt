@@ -4,3 +4,4 @@ codex-work-receipt-output/
 .DS_Store
 *.log
 coverage/
+tmp/

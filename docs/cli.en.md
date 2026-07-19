@@ -17,7 +17,7 @@ Run:
 npx codex-work-receipt@latest --lang en
 ```
 
-Choose all activity today, the last 7 calendar days, this week, or a specific recent session. Session choices include their time range, turns, tool calls, and model for identification.
+Choose all activity today, the last 3 hours, the last 7 calendar days, this week, or a specific recent session. Session choices include their time range, turns, tool calls, and model for identification.
 
 ## Non-interactive ranges
 
@@ -32,6 +32,14 @@ Summarize all Codex activity from today in your local timezone:
 ```bash
 npx codex-work-receipt@latest --today --lang en
 ```
+
+Summarize the last 3 hours:
+
+```bash
+npx codex-work-receipt@latest --hours 3 --lang en
+```
+
+`--hours` accepts an integer from 1 to 168 and filters exact timestamps, including windows that cross midnight. Rolling-hour receipts use the compatible cwr1 summary protocol and do not create cwr2 session-day canonical facts.
 
 Last 7 calendar days, including today:
 
@@ -99,7 +107,8 @@ npx codex-work-receipt@latest --latest --lang en --no-open
 
 | Option | Description |
 | --- | --- |
-| `--range <name>` | `latest`, `today`, `last-7-days`, or `this-week` |
+| `--range <name>` | `latest`, `last-hours`, `today`, `last-7-days`, or `this-week` |
+| `--hours <number>` | Summarize the last 1-168 hours |
 | `--latest` | Summarize the latest active Codex session; default mode |
 | `--today` | Summarize activity from today in the selected timezone |
 | `--session <id>` | Summarize one specific Codex session |
@@ -109,6 +118,9 @@ npx codex-work-receipt@latest --latest --lang en --no-open
 | `--output <file>` | Set the HTML output path |
 | `--data-dir <directory>` | Set the local structured-history directory |
 | `--install-skill` | Install the Codex AI Work Receipt skill |
+| `--install-pet` | Install only the Ticket Buddy Codex pet |
+| `--uninstall-pet` | Remove Ticket Buddy without deleting the skill or receipts |
+| `--install-companion` | Install both the skill and Ticket Buddy Codex pet |
 | `--no-open` | Do not open the generated page |
 
 Run the built-in help at any time:
@@ -133,5 +145,5 @@ See the [data schema and QR protocol](data-schema.en.md).
 
 - Codex is the only supported data source; Cursor and WorkBuddy are planned
 - Changed-file and line counts are intentionally omitted until they can be measured consistently
-- Calendar ranges filter individual events by local date and calculate a Token delta for each session
+- Calendar ranges filter events by local date, rolling-hour ranges use exact timestamps, and both calculate per-session Token deltas
 - Desktop PNG export is rendered locally in the browser and does not upload receipt data

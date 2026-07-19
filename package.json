@@ -1,6 +1,6 @@
 {
   "name": "codex-work-receipt",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "type": "module",
   "description": "Generate a privacy-first Codex work receipt from local session metadata.",
   "author": "a-bai-2026",
@@ -27,7 +27,7 @@
   "scripts": {
     "receipt": "node src/cli.mjs",
     "test": "node --test",
-    "check": "node --check src/cli.mjs && node --check src/core/skill-installer.mjs",
+    "check": "node --check src/cli.mjs && node --check src/core/skill-installer.mjs && node --check src/core/pet-installer.mjs && node --check src/core/range.mjs",
     "prepublishOnly": "npm test && npm run check"
   },
   "files": [

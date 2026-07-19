@@ -28,10 +28,17 @@ export function buildLogicalReceiptKey(metrics) {
   if (metrics.mode === "latest" || metrics.mode === "session") {
     return `${metrics.mode}:${sessionPart}:${metrics.timezone}`;
   }
+  if (metrics.mode === "last-hours") {
+    return `last-hours:${metrics.windowHours}:${metrics.windowStartAt.toISOString()}:${metrics.windowEndAt.toISOString()}:${metrics.timezone}`;
+  }
   if (metrics.mode === "this-week") {
     return `this-week:${metrics.rangeStartDate}:${metrics.timezone}`;
   }
   return `${metrics.mode}:${metrics.rangeStartDate}:${metrics.rangeEndDate}:${metrics.timezone}`;
+}
+
+export function buildSummaryReceiptId(logicalReceiptKey) {
+  return stableId("cwr", "codex-work-receipt/receipt/v1", [logicalReceiptKey]);
 }
 
 export function buildProtocolReceiptId(sourceVersion, logicalReceiptKey) {

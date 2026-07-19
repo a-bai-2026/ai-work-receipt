@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>把本机 Codex 的工作记录，开成一张可以带走的 AI 打工小票。</strong><br>
-  一行命令 · 完全本地 · 中英双语 · 三种主题 · 扫码传到手机
+  一行命令 · 完全本地 · Codex 桌宠 · 三种主题 · 扫码传到手机
 </p>
 
 <p align="center">
@@ -26,7 +26,7 @@
 
 ## Quickstart
 
-需要 Node.js 20 或更高版本，并且本机已经使用过 Codex。无需克隆仓库，运行后选择“今天 / 近 7 日 / 本周 / 指定会话”：
+需要 Node.js 20 或更高版本，并且本机已经使用过 Codex。无需克隆仓库，运行后选择“今天 / 最近 3 小时 / 近 7 日 / 本周 / 指定会话”：
 
 ```bash
 npx codex-work-receipt@latest
@@ -38,11 +38,29 @@ npx codex-work-receipt@latest
 npx codex-work-receipt@latest --today
 ```
 
+查看最近 3 小时的工作：
+
+```bash
+npx codex-work-receipt@latest --hours 3
+```
+
 网页和结构数据默认保存在 `./codex-work-receipt-output/`。生成的网页支持一键保存包含主小票和二维码导入联的高清长图。也可以继续使用 `--latest`、`--today` 等非交互参数，详见 [CLI 使用文档](docs/cli.md)。
 
 ## 直接跟 Codex 说
 
-安装一次 AI 打工小票 Skill：
+一次安装 AI 打工小票 Skill 和“票仔”Codex 桌宠：
+
+```bash
+npx codex-work-receipt@latest --install-companion
+```
+
+重启 Codex 后，在 `Settings > Pets` 中点击 Refresh，选择“票仔 · AI 小票工”，再输入 `/pet` 唤醒。以后可以说：
+
+> 票仔，开今天的票。
+
+> 票仔，开最近三个小时的票。
+
+如果只想安装 Skill：
 
 ```bash
 npx codex-work-receipt@latest --install-skill
@@ -62,6 +80,7 @@ Codex 会选择统计范围和主题、执行命令并打开小票。详见 [Cod
 
 - [CLI 使用与全部参数](docs/cli.md)
 - [Codex Skill](docs/codex-skill.md)
+- [Codex 桌宠“票仔”](docs/codex-pet.md)
 - [手机扫码导入](docs/mobile-import.md)
 - [数据结构与二维码协议](docs/data-schema.md)
 - [本地数据与隐私说明](docs/privacy.md)

@@ -1,4 +1,4 @@
 interface:
   display_name: "AI 打工小票"
-  short_description: "使用自然语言生成中英文 AI 打工小票并扫码导入手机"
-  default_prompt: "使用 $ai-work-receipt 给我刚刚这次 Codex 工作生成一张 AI 打工小票。"
+  short_description: "让票仔按会话、小时或自然日生成 AI 打工小票"
+  default_prompt: "使用 $ai-work-receipt 让票仔给我刚刚这次 Codex 工作生成一张 AI 打工小票。"

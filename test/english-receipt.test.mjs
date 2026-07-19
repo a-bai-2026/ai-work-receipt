@@ -144,3 +144,18 @@ test("自然日范围会在小票顶部展示完整统计周期", () => {
   assert.match(html, /统计周期: 2026\/07\/12—2026\/07\/18 · 最近 7 个自然日/);
   assert.match(html, /codex-work-receipt-last-7-days-2026-07-12-to-2026-07-18/);
 });
+
+test("滚动小时范围展示请求窗口和动态小时文案", () => {
+  const record = buildReceiptRecord({
+    ...metrics,
+    mode: "last-hours",
+    windowStartAt: new Date("2026-07-18T08:00:00.000Z"),
+    windowEndAt: new Date("2026-07-18T11:00:00.000Z"),
+    windowHours: 3,
+  }, "payroll", "en");
+  const html = renderHtml({ record, dataQrDataUrl: "data:image/png;base64,DATA" });
+
+  assert.match(html, /Last 3 hours/);
+  assert.match(html, /Work hours: 16:00—19:00/);
+  assert.match(html, /WINDOW PAY/);
+});

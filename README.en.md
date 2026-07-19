@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Turn local Codex activity into a work receipt you can keep and share.</strong><br>
-  One command · Local-first · Chinese & English · Three themes · Mobile QR import
+  One command · Local-first · Codex pet · Three themes · Mobile QR import
 </p>
 
 <p align="center">
@@ -26,7 +26,7 @@ Version `0.6.0` uses the cwr2 protocol to create stable privacy-safe facts for e
 
 ## Quickstart
 
-Requires Node.js 20+ and local Codex session records. No clone required; choose today, the last 7 days, this week, or a specific session:
+Requires Node.js 20+ and local Codex session records. No clone required; choose today, the last 3 hours, the last 7 days, this week, or a specific session:
 
 ```bash
 npx codex-work-receipt@latest --lang en
@@ -38,11 +38,29 @@ Summarize all Codex activity from today:
 npx codex-work-receipt@latest --today --lang en
 ```
 
+Summarize the last 3 hours:
+
+```bash
+npx codex-work-receipt@latest --hours 3 --lang en
+```
+
 HTML and structured data are written to `./codex-work-receipt-output/` by default. The generated page can save a high-resolution PNG containing the full receipt and QR import stub. Non-interactive options such as `--latest` and `--today` remain available; see the [CLI guide](docs/cli.en.md).
 
 ## Ask Codex directly
 
-Install the AI Work Receipt skill once:
+Install the AI Work Receipt skill and Ticket Buddy Codex pet together:
+
+```bash
+npx codex-work-receipt@latest --install-companion --lang en
+```
+
+Restart Codex, open `Settings > Pets`, select Refresh, choose “票仔 · AI 小票工” (Ticket Buddy), and use `/pet` to wake it. Then ask:
+
+> Ticket Buddy, create today's receipt.
+
+> Ticket Buddy, create a receipt for the last three hours.
+
+To install only the skill:
 
 ```bash
 npx codex-work-receipt@latest --install-skill --lang en
@@ -62,6 +80,7 @@ The desktop page generates one or more privacy-safe data QR codes. The companion
 
 - [CLI usage and options](docs/cli.en.md)
 - [Codex Skill](docs/codex-skill.en.md)
+- [Ticket Buddy Codex pet](docs/codex-pet.en.md)
 - [Mobile QR import](docs/mobile-import.en.md)
 - [Data schema and QR protocol](docs/data-schema.en.md)
 - [Local data and privacy](docs/privacy.en.md)

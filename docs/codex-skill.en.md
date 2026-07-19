@@ -26,15 +26,23 @@ After installation, ask Codex:
 
 > Generate today's AI work receipt with the diner theme.
 
+> Ticket Buddy, create a receipt for the last three hours.
+
+> Ticket Buddy, create a receipt for the last few hours.
+
 > Generate an AI work receipt for the last seven days.
 
 > Show how much Codex worked this week.
 
 > Create a Chinese receipt for my latest session.
 
-Codex will choose a specific session, today, the last seven days, or this week, plus the language and theme, then run the CLI and open the generated page.
+Codex will choose a specific session, the last 1-168 hours, today, the last seven days, or this week, plus the language and theme, then run the CLI and open the generated page. “The last few hours” defaults to three hours.
+
+If another Codex task is still running and you want the receipt immediately, start a separate local Codex chat. A message sent to the active chat may steer the current run or wait in its queue, depending on Follow-up behavior.
 
 You can also invoke the skill explicitly with `$ai-work-receipt`.
+
+See [Ticket Buddy Codex pet](codex-pet.en.md) for the companion setup.
 
 ## Update
 

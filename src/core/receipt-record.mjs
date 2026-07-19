@@ -4,7 +4,11 @@ import os from "node:os";
 import path from "node:path";
 
 import { canonicalStringify, sha256Hex } from "./canonical.mjs";
-import { buildLogicalReceiptKey, buildProtocolReceiptId } from "./fact-identity.mjs";
+import {
+  buildLogicalReceiptKey,
+  buildProtocolReceiptId,
+  buildSummaryReceiptId,
+} from "./fact-identity.mjs";
 import {
   buildCompensation,
   DEFAULT_LOCALE,
@@ -22,7 +26,12 @@ function fingerprintSessionIds(sessionIds) {
 export function buildReceiptRecord(metrics, defaultTheme = "classic", locale = DEFAULT_LOCALE, canonical = {}) {
   const sessionFingerprint = fingerprintSessionIds(metrics.sessionIds);
   const logicalKey = buildLogicalReceiptKey(metrics);
-  const id = buildProtocolReceiptId(SOURCE_VERSION, logicalKey);
+  const summaryOnly = metrics.mode === "last-hours";
+  const schemaVersion = summaryOnly ? 1 : SCHEMA_VERSION;
+  const sourceVersion = summaryOnly ? "cwr1" : SOURCE_VERSION;
+  const id = summaryOnly
+    ? buildSummaryReceiptId(logicalKey)
+    : buildProtocolReceiptId(SOURCE_VERSION, logicalKey);
   const snapshotHash = sha256Hex({
     start: metrics.startAt.toISOString(),
     end: metrics.endAt.toISOString(),
@@ -33,6 +42,8 @@ export function buildReceiptRecord(metrics, defaultTheme = "classic", locale = D
     scope: metrics.mode,
     rangeStartDate: metrics.rangeStartDate,
     rangeEndDate: metrics.rangeEndDate,
+    windowStartAt: metrics.windowStartAt?.toISOString() || null,
+    windowEndAt: metrics.windowEndAt?.toISOString() || null,
   });
   const workProfileId = metrics.workProfileId || "temporary-hire";
   const workProfile = getWorkProfileCopy(workProfileId, locale);
@@ -59,23 +70,24 @@ export function buildReceiptRecord(metrics, defaultTheme = "classic", locale = D
     manifest_hash: sha256Hex(canonicalStringify(manifestCore)),
   };
 
-  return {
-    schema_version: SCHEMA_VERSION,
+  const record = {
+    schema_version: schemaVersion,
     locale,
     id,
     generated_at: new Date().toISOString(),
     source: {
       type: "codex",
-      version: SOURCE_VERSION,
+      version: sourceVersion,
       scope: metrics.mode,
+      hours: metrics.windowHours || null,
       collector_version: COLLECTOR_VERSION,
       logical_key: logicalKey,
       session_fingerprint: sessionFingerprint,
       snapshot_hash: snapshotHash,
     },
     period: {
-      start_at: metrics.startAt.toISOString(),
-      end_at: metrics.endAt.toISOString(),
+      start_at: (metrics.windowStartAt || metrics.startAt).toISOString(),
+      end_at: (metrics.windowEndAt || metrics.endAt).toISOString(),
       timezone: metrics.timezone,
       range_start_date: metrics.rangeStartDate,
       range_end_date: metrics.rangeEndDate,
@@ -107,9 +119,12 @@ export function buildReceiptRecord(metrics, defaultTheme = "classic", locale = D
       contains_paths: false,
       contains_filenames: false,
     },
-    manifest,
-    facts,
   };
+  if (!summaryOnly) {
+    record.manifest = manifest;
+    record.facts = facts;
+  }
+  return record;
 }
 
 export function persistReceiptRecord(record, outputHtmlPath, requestedDataDir = null) {

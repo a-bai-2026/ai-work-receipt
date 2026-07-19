@@ -84,6 +84,17 @@ test("二维码显式携带新的统计范围和自然日边界", () => {
   assert.deepEqual(decoded.d.slice(3), ["2026-07-11", "2026-07-17"]);
 });
 
+test("滚动小时摘要继续使用可解码的 cwr1 载荷", () => {
+  const payload = encodeReceiptPayload({
+    ...record,
+    source: { scope: "last-hours", hours: 3 },
+  });
+  const decoded = decodeReceiptPayload(payload);
+
+  assert.match(payload, /^cwr1\./);
+  assert.equal(decoded.o, "last-hours");
+});
+
 function cwr2Fact(index) {
   const suffix = String(index).padStart(2, "0");
   return {

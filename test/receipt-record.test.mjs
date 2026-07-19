@@ -87,6 +87,27 @@ test("同一自然周重复生成会更新同一张历史小票", () => {
   assert.notEqual(updatedWeekly.source.snapshot_hash, weekly.source.snapshot_hash);
 });
 
+test("滚动小时范围使用兼容摘要协议且不生成自然日事实", () => {
+  const record = buildReceiptRecord({
+    ...metrics,
+    mode: "last-hours",
+    rangeStartDate: "2026-07-18",
+    rangeEndDate: "2026-07-18",
+    windowStartAt: new Date("2026-07-18T09:00:00.000Z"),
+    windowEndAt: new Date("2026-07-18T12:00:00.000Z"),
+    windowHours: 3,
+  }, "payroll", "zh-CN");
+
+  assert.equal(record.schema_version, 1);
+  assert.equal(record.source.version, "cwr1");
+  assert.equal(record.source.scope, "last-hours");
+  assert.equal(record.source.hours, 3);
+  assert.equal(record.period.start_at, "2026-07-18T09:00:00.000Z");
+  assert.equal(record.period.end_at, "2026-07-18T12:00:00.000Z");
+  assert.equal("manifest" in record, false);
+  assert.equal("facts" in record, false);
+});
+
 test("无扩展名输出不会被结构 JSON 覆盖", () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-work-receipt-"));
   const outputPath = path.join(tempDir, "receipt");

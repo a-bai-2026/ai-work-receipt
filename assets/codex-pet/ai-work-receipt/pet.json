@@ -1,0 +1,6 @@
+{
+  "id": "ai-work-receipt",
+  "displayName": "票仔 · AI 小票工",
+  "description": "一只陪 Codex 搬砖、完工后提醒你开票的小票工。",
+  "spritesheetPath": "spritesheet.webp"
+}

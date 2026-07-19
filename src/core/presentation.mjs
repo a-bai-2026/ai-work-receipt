@@ -93,6 +93,7 @@ const RECEIPT_COPY = {
     scope: {
       latest: "最近一次会话",
       session: "指定会话",
+      "last-hours": "最近 {hours} 小时",
       today: "今日全部会话",
       "last-7-days": "最近 7 个自然日",
       "this-week": "本周全部会话",
@@ -165,6 +166,7 @@ const RECEIPT_COPY = {
     scope: {
       latest: "Latest session",
       session: "Selected session",
+      "last-hours": "Last {hours} hours",
       today: "All sessions today",
       "last-7-days": "Last 7 calendar days",
       "this-week": "All sessions this week",
@@ -225,6 +227,7 @@ const COMPENSATION_COPY = {
   "zh-CN": {
     latest: "本单工资",
     session: "本单工资",
+    "last-hours": "本段工资",
     today: "本日工资",
     "last-7-days": "近七日工资",
     "this-week": "本周工资",
@@ -234,6 +237,7 @@ const COMPENSATION_COPY = {
   en: {
     latest: "SHIFT PAY",
     session: "SHIFT PAY",
+    "last-hours": "WINDOW PAY",
     today: "TODAY'S PAY",
     "last-7-days": "7-DAY PAY",
     "this-week": "THIS WEEK'S PAY",
@@ -260,6 +264,11 @@ export function getWorkProfileCopy(profileId, locale = DEFAULT_LOCALE) {
 
 export function getReceiptCopy(locale = DEFAULT_LOCALE) {
   return RECEIPT_COPY[SUPPORTED_LOCALES.has(locale) ? locale : DEFAULT_LOCALE];
+}
+
+export function getScopeLabel(scope, locale = DEFAULT_LOCALE, hours = null) {
+  const template = getReceiptCopy(locale).scope[scope] || getReceiptCopy(locale).scope.latest;
+  return String(template).replaceAll("{hours}", String(hours || 3));
 }
 
 export function buildCompensation(scope, amount, locale = DEFAULT_LOCALE) {
