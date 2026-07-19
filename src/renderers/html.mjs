@@ -91,6 +91,7 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
     busyLabel: copy.exportingImage,
     successLabel: copy.exportSuccess,
     errorLabel: copy.exportError,
+    miniProgramLabel: copy.exportMiniProgramLabel,
     fileBase: `codex-work-receipt-${record.source.scope}-${spansMultipleDates ? `${rangeStartDate}-to-${rangeEndDate}` : `${rangeEndDate}-${record.id.slice(4, 12)}`}`,
   }).replaceAll("<", "\\u003c");
   const rows = [
@@ -151,7 +152,7 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
       <div class="qr-grid qr-grid--export-only" hidden>
         <div class="qr-item">
           <div class="qr-frame">${miniProgramVisual}</div>
-          <strong>${escapeHtml(copy.openMiniProgram)}</strong>
+          <strong data-export-mini-label>${escapeHtml(copy.openMiniProgram)}</strong>
           <span>${escapeHtml(copy.openMiniProgramHint)}</span>
         </div>
         ${dataQrItems}
@@ -160,7 +161,7 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
       <div class="qr-grid qr-grid--single">
         <div class="qr-item">
           <div class="qr-frame">${miniProgramVisual}</div>
-          <strong>${escapeHtml(copy.openMiniProgram)}</strong>
+          <strong data-export-mini-label>${escapeHtml(copy.openMiniProgram)}</strong>
           <span>${escapeHtml(copy.openMiniProgramHint)}</span>
         </div>
         ${dataQrItems}
@@ -692,6 +693,50 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
       }));
     }
 
+    function sanitizeExportNode(node) {
+      const multipartLiveNode = node.querySelector(".multipart-live");
+      if (multipartLiveNode) multipartLiveNode.remove();
+
+      const exportGridNode = node.querySelector(".qr-grid--export-only");
+      if (exportGridNode) {
+        exportGridNode.removeAttribute("hidden");
+        exportGridNode.style.display = "grid";
+      }
+
+      node.querySelectorAll("[data-data-qr-index]").forEach((item) => item.remove());
+      node.querySelectorAll(".qr-grid").forEach((grid) => {
+        grid.style.gridTemplateColumns = "minmax(0, 1fr)";
+        grid.style.justifyItems = "center";
+      });
+
+      const miniProgramLabel = node.querySelector("[data-export-mini-label]");
+      if (miniProgramLabel) miniProgramLabel.textContent = exportConfig.miniProgramLabel;
+      const transferDescription = node.querySelector(".transfer-heading p");
+      if (transferDescription) transferDescription.remove();
+      const transferNote = node.querySelector(".transfer-note");
+      if (transferNote) transferNote.remove();
+
+      node.querySelectorAll(".paper").forEach((paper) => {
+        paper.style.boxShadow = "none";
+      });
+    }
+
+    function createExportNode(source, paperColor) {
+      const clone = source.cloneNode(true);
+      sanitizeExportNode(clone);
+      const sourceWidth = Math.ceil(source.getBoundingClientRect().width || source.scrollWidth);
+      Object.assign(clone.style, {
+        position: "absolute",
+        left: "-100000px",
+        top: "0",
+        width: sourceWidth + "px",
+        background: paperColor,
+        pointerEvents: "none",
+      });
+      document.body.appendChild(clone);
+      return clone;
+    }
+
     function downloadImage(dataUrl, filename) {
       const link = document.createElement("a");
       link.href = dataUrl;
@@ -708,15 +753,17 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
       exportButton.disabled = true;
       exportButton.textContent = exportConfig.busyLabel;
       setExportStatus("");
+      let renderNode = null;
 
       try {
         if (document.fonts?.ready) await document.fonts.ready;
-        await waitForImages(exportNode);
-        const width = Math.ceil(exportNode.scrollWidth);
-        const height = Math.ceil(exportNode.scrollHeight);
-        const scale = Math.max(2, Math.min(3, 1500 / Math.max(1, width)));
         const paperColor = getComputedStyle(document.documentElement).getPropertyValue("--paper").trim() || "#ffffff";
-        const dataUrl = await domtoimage.toPng(exportNode, {
+        renderNode = createExportNode(exportNode, paperColor);
+        await waitForImages(renderNode);
+        const width = Math.ceil(renderNode.scrollWidth);
+        const height = Math.ceil(renderNode.scrollHeight);
+        const scale = Math.max(2, Math.min(3, 1500 / Math.max(1, width)));
+        const dataUrl = await domtoimage.toPng(renderNode, {
           width,
           height,
           scale,
@@ -725,17 +772,12 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
           cacheBust: false,
           style: { background: paperColor },
           onclone(clone) {
+            sanitizeExportNode(clone);
+            clone.style.position = "static";
+            clone.style.left = "auto";
+            clone.style.top = "auto";
+            clone.style.width = width + "px";
             clone.style.background = paperColor;
-            const multipartLiveClone = clone.querySelector(".multipart-live");
-            if (multipartLiveClone) multipartLiveClone.remove();
-            const exportGridClone = clone.querySelector(".qr-grid--export-only");
-            if (exportGridClone) {
-              exportGridClone.removeAttribute("hidden");
-              exportGridClone.style.display = "grid";
-            }
-            clone.querySelectorAll(".paper").forEach((paper) => {
-              paper.style.boxShadow = "none";
-            });
           },
           logger: {},
         });
@@ -748,6 +790,7 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
         console.error(error);
         setExportStatus(exportConfig.errorLabel, "error");
       } finally {
+        if (renderNode) renderNode.remove();
         exportButton.disabled = false;
         exportButton.textContent = exportConfig.idleLabel;
       }

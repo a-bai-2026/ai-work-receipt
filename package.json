@@ -1,6 +1,6 @@
 {
   "name": "codex-work-receipt",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "type": "module",
   "description": "Generate a privacy-first Codex work receipt from local session metadata.",
   "author": "a-bai-2026",

@@ -87,7 +87,7 @@ Default output:
 
 Default filenames include the calendar range. Latest-session and selected-session receipts include a short identifier so receipts from different dates or sessions do not overwrite one another.
 
-Open the generated HTML and click “Save full PNG” to download a high-resolution image. It includes the main receipt, mini-program code, and data QR import stub in the currently selected theme. Theme controls, the page background, and the footer note are excluded. With one data QR, the mini-program code and data code remain side by side. When cwr2 exceeds the safe capacity of one QR code, the page shows the mini-program code first and then rotates multipart data codes one at a time without desktop clicks. The full PNG still includes every numbered part so the offline payload remains complete.
+Open the generated HTML and click “Save full PNG” to download a high-resolution image. It contains only the complete main receipt and WeChat mini-program code in the currently selected theme. Data QR codes, multipart data codes, theme controls, the page background, and the footer note are excluded. The HTML page still presents data codes normally: a single code stays beside the mini-program code, while oversized cwr2 payloads rotate their parts after the mini program has been opened so they can be imported on the phone.
 
 Set a timezone and output path:
 

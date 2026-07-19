@@ -54,7 +54,7 @@ Summarize the last 3 hours:
 npx codex-work-receipt@latest --hours 3 --lang en
 ```
 
-HTML and structured data are written to `./codex-work-receipt-output/` by default. The generated page can save a high-resolution PNG containing the full receipt and QR import stub. Non-interactive options such as `--latest` and `--today` remain available; see the [CLI guide](docs/cli.en.md).
+HTML and structured data are written to `./codex-work-receipt-output/` by default. The generated page can save a high-resolution PNG containing only the full receipt and WeChat mini-program code; data QR codes are excluded. Non-interactive options such as `--latest` and `--today` remain available; see the [CLI guide](docs/cli.en.md).
 
 ## Ask Codex directly
 

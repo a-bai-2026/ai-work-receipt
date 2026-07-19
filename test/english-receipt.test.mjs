@@ -83,9 +83,14 @@ test("英文 HTML 会完整本地化主要小票内容", () => {
   assert.match(exportMarkup, /paper receipt/);
   assert.match(exportMarkup, /paper transfer-stub/);
   assert.doesNotMatch(exportMarkup, /theme-switcher|save-receipt-image|class="privacy"/);
+  assert.match(html, /function sanitizeExportNode/);
+  assert.match(html, /node\.querySelectorAll\("\[data-data-qr-index\]"\)\.forEach\(\(item\) => item\.remove\(\)\)/);
+  assert.match(html, /grid\.style\.gridTemplateColumns = "minmax\(0, 1fr\)"/);
+  assert.match(html, /domtoimage\.toPng\(renderNode/);
+  assert.match(html, /data-export-mini-label/);
 });
 
-test("多分片 HTML 只实时展示一个数据码，并保留完整导出联", () => {
+test("多分片 HTML 实时轮播数据码，导出时仅保留小程序码", () => {
   const record = buildReceiptRecord(metrics, "classic", "zh-CN");
   const html = renderHtml({
     record,
@@ -107,7 +112,8 @@ test("多分片 HTML 只实时展示一个数据码，并保留完整导出联",
   assert.match(html, /data-data-qr-index="2"/);
   assert.match(html, /startMultipartTransfer/);
   assert.match(html, /showMultipartSetup/);
-  assert.match(html, /exportGridClone\.style\.display = "grid"/);
+  assert.match(html, /sanitizeExportNode\(clone\)/);
+  assert.match(html, /miniProgramLabel\.textContent = exportConfig\.miniProgramLabel/);
   assert.doesNotMatch(html, /qr-grid qr-grid--single/);
 
   const inlineScripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
