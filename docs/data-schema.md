@@ -32,7 +32,9 @@ cwr2p.<transferId>.<partIndex>.<partCount>.<totalChecksum>.<partChecksum>.<chunk
 
 小程序应检查前缀和校验值，再解压并解析数据。未来结构升级通过 `v` 字段兼容。
 
-精简字段 `o` 显式携带 `latest`、`session`、`last-hours`、`today`、`last-7-days` 或 `this-week`；`d[3]` 和 `d[4]` 携带日期边界。今日、近 7 日和本周继续使用 cwr2 canonical facts。`last-hours` 是滚动时间窗，为避免与“会话 × 自然日”事实发生身份冲突，使用兼容的 cwr1 摘要载荷。旧二维码仍可由新版小程序导入。
+精简字段 `o` 显式携带 `latest`、`session`、`last-hours`、`today`、`last-7-days` 或 `this-week`；`d[3]` 和 `d[4]` 携带日期边界。今日、近 7 日和本周继续使用 cwr2 canonical facts。`last-hours` 是滚动时间窗，为避免与“会话 × 自然日”事实发生身份冲突，使用兼容的 cwr1 摘要载荷，只进入私人历史、不参与 AI 供销社统计。旧二维码仍可由新版小程序导入。
+
+同一 Codex 会话出现多份 append-only 日志修订时，生成器只采用更完整的修订；cwr2 manifest 中的 factId 必须唯一，检测到身份冲突时不会输出可扫码二维码。
 
 `presentation.compensation` 是娱乐化 AI 工分，不代表真实 API 费用。为兼容当前中文小程序，二维码展示文案继续使用中文，并通过精简字段 `l` 和 `r` 携带桌面语言及工种语义 ID；英文 HTML 和本地 JSON 不受影响。
 

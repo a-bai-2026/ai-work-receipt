@@ -69,6 +69,38 @@ function calendarCandidates(files, startDate) {
   return files.filter((file) => file.modifiedAt >= approximateStart);
 }
 
+function revisionDominates(candidate, current) {
+  const candidateRevision = candidate.sourceRevision || {};
+  const currentRevision = current.sourceRevision || {};
+  const candidateRows = Number(candidateRevision.row_count || 0);
+  const currentRows = Number(currentRevision.row_count || 0);
+  const candidateBytes = Number(candidateRevision.byte_length || 0);
+  const currentBytes = Number(currentRevision.byte_length || 0);
+  return candidateRows >= currentRows && candidateBytes >= currentBytes
+    && (candidateRows > currentRows || candidateBytes > currentBytes);
+}
+
+function preferSession(candidate, current) {
+  if (revisionDominates(candidate, current)) return true;
+  if (revisionDominates(current, candidate)) return false;
+
+  const candidateModifiedAt = Number(candidate.modifiedAt || candidate.endAt || 0);
+  const currentModifiedAt = Number(current.modifiedAt || current.endAt || 0);
+  if (candidateModifiedAt !== currentModifiedAt) return candidateModifiedAt > currentModifiedAt;
+
+  return String(candidate.filePath || "").localeCompare(String(current.filePath || "")) > 0;
+}
+
+export function deduplicateCodexSessions(sessions) {
+  const selected = new Map();
+  for (const session of sessions) {
+    const key = `${session.identityQuality || "metadata"}:${session.sessionId}`;
+    const current = selected.get(key);
+    if (!current || preferSession(session, current)) selected.set(key, session);
+  }
+  return [...selected.values()];
+}
+
 export function loadCodexSessions(range) {
   const files = codexSessionFiles();
   let candidates = files;
@@ -85,8 +117,7 @@ export function loadCodexSessions(range) {
     scanMode = fullScan ? "full" : "best_effort";
   }
 
-  const sessions = candidates
-    .map(sessionFromFile)
+  const sessions = deduplicateCodexSessions(candidates.map(sessionFromFile))
     .sort((left, right) => right.endAt - left.endAt);
 
   if (range.scope === "latest") {
@@ -106,10 +137,10 @@ export function loadCodexSessions(range) {
 }
 
 export function listRecentCodexSessions(limit = 10) {
-  const sessions = codexSessionFiles()
+  const sessions = deduplicateCodexSessions(codexSessionFiles()
     .slice(0, Math.max(40, limit * 3))
     .map(sessionFromFile)
-    .filter((session) => session.rows.length)
+    .filter((session) => session.rows.length))
     .sort((left, right) => right.endAt - left.endAt)
     .slice(0, limit);
 

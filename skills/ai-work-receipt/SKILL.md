@@ -13,6 +13,7 @@ Use the published `codex-work-receipt` CLI as the only statistics and rendering 
 - Use `--hours <N>` for “最近 N 小时”“过去 N 小时” or “近 N 小时”. Accept integers from 1 to 168.
 - Use `--hours 3` for an unspecified “最近几个小时”“过去几个小时” request.
 - Use `--hours 12` for “最近半天”.
+- Treat `--hours` receipts as rolling summaries for private history only. They do not participate in AI Work Cooperative accounting; if the user asks for an accountable cooperative receipt, use today, this week, the last seven days, or a specific session instead.
 - Use `--today` for “今天”“今日”“今天全部工作” or a daily summary.
 - Use `--range last-7-days` for “最近七天”“近 7 日” or a rolling seven-calendar-day summary.
 - Use `--range this-week` for “本周”“这周” or a Monday-to-now summary.
@@ -39,6 +40,7 @@ Replace only the mode and optional flags according to the request.
 
 3. Let the CLI open the generated HTML unless the user requested `--no-open`.
 4. On success, report the HTML path and tell the user to scan the official mini-program code first, then the adjacent data QR code.
+5. When `--hours` was used, explicitly state that the receipt is a private rolling summary and will not enter AI Work Cooperative statistics.
 
 ## Privacy and failures
 

@@ -32,7 +32,9 @@ cwr2p.<transferId>.<partIndex>.<partCount>.<totalChecksum>.<partChecksum>.<chunk
 
 The mini program validates the prefix and checksum before decompressing and parsing the payload. Future schema versions use the compact `v` field for compatibility.
 
-Compact field `o` explicitly carries `latest`, `session`, `last-hours`, `today`, `last-7-days`, or `this-week`. `d[3]` and `d[4]` carry date boundaries. Today, last-seven-days, and this-week receipts continue to use cwr2 canonical facts. `last-hours` is a rolling window, so it uses the compatible cwr1 summary payload to avoid colliding with session-day fact identities. The updated mini program can still import older QR codes.
+Compact field `o` explicitly carries `latest`, `session`, `last-hours`, `today`, `last-7-days`, or `this-week`. `d[3]` and `d[4]` carry date boundaries. Today, last-seven-days, and this-week receipts continue to use cwr2 canonical facts. `last-hours` is a rolling window, so it uses the compatible cwr1 summary payload to avoid colliding with session-day fact identities; it stays in private history and does not participate in AI Work Cooperative accounting. The updated mini program can still import older QR codes.
+
+When the same Codex session has multiple append-only log revisions, the generator keeps the more complete revision. Fact IDs in a cwr2 manifest must be unique; an identity collision stops QR generation instead of emitting an invalid payload.
 
 `presentation.compensation` contains playful AI work points, not real API cost. For compatibility with the current Chinese mini program, QR display copy remains Chinese while compact fields `l` and `r` carry the desktop locale and language-neutral role ID. English HTML and local JSON remain fully localized.
 

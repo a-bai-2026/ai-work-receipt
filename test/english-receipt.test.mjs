@@ -164,4 +164,6 @@ test("滚动小时范围展示请求窗口和动态小时文案", () => {
   assert.match(html, /Last 3 hours/);
   assert.match(html, /Work hours: 16:00—19:00/);
   assert.match(html, /WINDOW PAY/);
+  assert.match(html, /rolling summary for private history only/);
+  assert.match(html, /does not participate in AI Work Cooperative accounting/);
 });

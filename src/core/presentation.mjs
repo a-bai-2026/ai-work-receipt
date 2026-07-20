@@ -147,6 +147,7 @@ const RECEIPT_COPY = {
     placeholderValue: "待接入",
     placeholderAria: "小程序码待接入",
     transferNote: "数据码只包含时间、轮次、Token和工具调用等统计，不包含Prompt、回复正文、代码、项目路径或文件名。",
+    rollingSummaryNotice: "最近 {hours} 小时属于滚动摘要，只保存到私人历史，不参与 AI 供销社统计。需要统计时请生成“今日 / 本周 / 近 7 日 / 指定会话”小票。",
     privacy: "结构数据同时保存在本机，未来可以批量导入小程序历史记录。",
   },
   en: {
@@ -221,6 +222,7 @@ const RECEIPT_COPY = {
     placeholderValue: "Pending",
     placeholderAria: "Mini-program code pending",
     transferNote: "The data code contains only statistics such as time, turns, Tokens, and tool calls. It does not contain prompts, responses, code, project paths, or file names.",
+    rollingSummaryNotice: "The last {hours} hours is a rolling summary for private history only. It does not participate in AI Work Cooperative accounting. Use today, this week, the last seven days, or a specific session for accountable facts.",
     privacy: "Structured data is also stored locally for future batch import into your mini-program history.",
   },
 };
@@ -271,6 +273,10 @@ export function getReceiptCopy(locale = DEFAULT_LOCALE) {
 export function getScopeLabel(scope, locale = DEFAULT_LOCALE, hours = null) {
   const template = getReceiptCopy(locale).scope[scope] || getReceiptCopy(locale).scope.latest;
   return String(template).replaceAll("{hours}", String(hours || 3));
+}
+
+export function getRollingSummaryNotice(locale = DEFAULT_LOCALE, hours = null) {
+  return String(getReceiptCopy(locale).rollingSummaryNotice).replaceAll("{hours}", String(hours || 3));
 }
 
 export function buildCompensation(scope, amount, locale = DEFAULT_LOCALE) {

@@ -54,6 +54,8 @@ Summarize the last 3 hours:
 npx codex-work-receipt@latest --hours 3 --lang en
 ```
 
+“Last N hours” is a rolling summary for private history only. It does not participate in AI Work Cooperative deduplicated accounting. Use today, this week, the last seven days, or a specific session when you want accountable canonical facts.
+
 HTML and structured data are written to `./codex-work-receipt-output/` by default. The generated page can save a high-resolution PNG containing only the full receipt and WeChat mini-program code; data QR codes are excluded. Non-interactive options such as `--latest` and `--today` remain available; see the [CLI guide](docs/cli.en.md).
 
 ## Ask Codex directly

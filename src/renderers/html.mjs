@@ -7,6 +7,7 @@ import {
   buildCompensation,
   DEFAULT_LOCALE,
   getReceiptCopy,
+  getRollingSummaryNotice,
   getScopeLabel,
 } from "../core/presentation.mjs";
 
@@ -71,6 +72,9 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
   const isCalendarScope = new Set(["today", "last-7-days", "this-week"]).has(record.source.scope);
   const spansMultipleDates = rangeStartDate !== rangeEndDate;
   const scopeLabel = getScopeLabel(record.source.scope, locale, record.source.hours);
+  const rollingSummaryNotice = record.source.scope === "last-hours"
+    ? getRollingSummaryNotice(locale, record.source.hours)
+    : null;
   const dateRange = spansMultipleDates
     ? `${formatDateKey(rangeStartDate, locale)}—${formatDateKey(rangeEndDate, locale)}`
     : formatDateKey(rangeEndDate, locale);
@@ -493,6 +497,13 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
       line-height: 1.65;
       text-align: center;
     }
+    .transfer-note--warning {
+      padding: 12px 14px;
+      border: 1px solid color-mix(in srgb, var(--ink) 28%, transparent);
+      background: color-mix(in srgb, var(--accent) 76%, var(--paper));
+      color: var(--ink);
+      font-weight: 700;
+    }
     .privacy {
       margin: 24px auto 0;
       max-width: 440px;
@@ -569,6 +580,7 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
         <p>${escapeHtml(copy.transferDescription)}</p>
       </header>
       ${transferVisual}
+      ${rollingSummaryNotice ? `<p class="transfer-note transfer-note--warning">${escapeHtml(rollingSummaryNotice)}</p>` : ""}
       <p class="transfer-note">${escapeHtml(copy.transferNote)}</p>
       </section>
     </div>

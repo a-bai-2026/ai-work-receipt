@@ -198,6 +198,11 @@ export function buildCanonicalFacts(sessions, range, options = {}) {
     left.local_date.localeCompare(right.local_date) || left.fact_id.localeCompare(right.fact_id)
   ));
 
+  const uniqueFactIds = new Set(facts.map((fact) => fact.fact_id));
+  if (uniqueFactIds.size !== facts.length) {
+    throw new Error("检测到重复的规范事实，请更新生成器后重新生成小票");
+  }
+
   return {
     facts,
     coverage: coverageForRange(range, sessions.scanMode || options.scanMode || "best_effort", observedAt),

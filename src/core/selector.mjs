@@ -37,7 +37,9 @@ export async function promptForRange({ locale, timezone, loadRecentSessions }) {
   try {
     console.log(isEnglish ? "\nChoose a receipt range:\n" : "\n请选择小票统计范围：\n");
     console.log(isEnglish ? "1. All activity today (recommended)" : "1. 今天全部活动（推荐）");
-    console.log(isEnglish ? "2. Last 3 hours" : "2. 最近 3 小时");
+    console.log(isEnglish
+      ? "2. Last 3 hours (private rolling summary; not counted by the cooperative)"
+      : "2. 最近 3 小时（私人滚动摘要，不计入供销社）");
     console.log(isEnglish ? "3. Last 7 calendar days" : "3. 最近 7 个自然日");
     console.log(isEnglish ? "4. This week (Monday to now)" : "4. 本周（周一至今）");
     console.log(isEnglish ? "5. Choose a specific session" : "5. 选择一个具体会话");

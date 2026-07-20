@@ -39,7 +39,7 @@ Summarize the last 3 hours:
 npx codex-work-receipt@latest --hours 3 --lang en
 ```
 
-`--hours` accepts an integer from 1 to 168 and filters exact timestamps, including windows that cross midnight. Rolling-hour receipts use the compatible cwr1 summary protocol and do not create cwr2 session-day canonical facts.
+`--hours` accepts an integer from 1 to 168 and filters exact timestamps, including windows that cross midnight. Rolling-hour receipts use the compatible cwr1 summary protocol, stay in private history, and do not participate in AI Work Cooperative accounting. Use today, this week, the last seven days, or a specific session for cwr2 session-day canonical facts.
 
 Last 7 calendar days, including today:
 

@@ -75,3 +75,23 @@ test("会话日 Token 增量按来源顺序处理重置", () => {
   assert.equal(fact.stats.total_tokens, 100);
   assert.equal(fact.stats.token_reset_count, 1);
 });
+
+test("重复会话事实不会被写入 cwr2 manifest", () => {
+  const duplicate = {
+    ...session,
+    rows: session.rows.map((row) => ({ ...row })),
+    sourceRevision: {
+      ...session.sourceRevision,
+      tail_hash: "tail-b",
+    },
+  };
+
+  assert.throws(
+    () => buildCanonicalFacts(
+      [session, duplicate],
+      resolveRange("today", "Asia/Shanghai", new Date("2026-07-18T12:00:00.000Z")),
+      { observedAt: "2026-07-19T12:00:00.000Z" },
+    ),
+    /重复的规范事实/,
+  );
+});

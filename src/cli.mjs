@@ -9,7 +9,7 @@ import QRCode from "qrcode";
 import { parseArgs, printHelp } from "./core/args.mjs";
 import { buildCanonicalFacts } from "./core/fact-buckets.mjs";
 import { collectMetrics } from "./core/metrics.mjs";
-import { getScopeLabel } from "./core/presentation.mjs";
+import { getRollingSummaryNotice, getScopeLabel } from "./core/presentation.mjs";
 import { encodeReceiptPayloads } from "./core/qr-payload.mjs";
 import { outputSlugForRange, resolveRange } from "./core/range.mjs";
 import { buildReceiptRecord, persistReceiptRecord } from "./core/receipt-record.mjs";
@@ -145,6 +145,9 @@ async function main() {
     console.log(record.manifest
       ? `Data QR: ${qrPayloads.length} code(s) · ${record.manifest.fact_count} canonical fact(s) · schema v${record.schema_version}`
       : `Data QR: ${qrPayloads.length} code(s) · rolling summary · schema v${record.schema_version}`);
+    if (record.source.scope === "last-hours") {
+      console.log(`Note: ${getRollingSummaryNotice(options.locale, record.source.hours)}`);
+    }
     if (!miniProgramCodeDataUrl) console.log("Mini-program code: not configured; using the explicit placeholder");
   } else {
     console.log(`已生成网页：${outputFile}`);
@@ -155,6 +158,9 @@ async function main() {
     console.log(record.manifest
       ? `数据二维码：${qrPayloads.length} 个 · ${record.manifest.fact_count} 条规范事实 · schema v${record.schema_version}`
       : `数据二维码：${qrPayloads.length} 个 · 滚动摘要 · schema v${record.schema_version}`);
+    if (record.source.scope === "last-hours") {
+      console.log(`提示：${getRollingSummaryNotice(options.locale, record.source.hours)}`);
+    }
     if (!miniProgramCodeDataUrl) console.log("小程序码：尚未配置，页面使用明确占位符");
   }
   if (options.open) openFile(outputFile);
