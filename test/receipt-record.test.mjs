@@ -121,3 +121,25 @@ test("无扩展名输出不会被结构 JSON 覆盖", () => {
   assert.equal(fs.readFileSync(outputPath, "utf8"), "<html>receipt</html>");
   assert.equal(JSON.parse(fs.readFileSync(persisted.companionPath, "utf8")).id, record.id);
 });
+
+test("本地历史逐条写入而不是拼接成单个大字符串", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-work-receipt-history-"));
+  const outputPath = path.join(tempDir, "receipt.html");
+  const dataDir = path.join(tempDir, "data");
+  const record = buildReceiptRecord(metrics);
+  const originalJoin = Array.prototype.join;
+
+  Array.prototype.join = function guardedJoin(separator) {
+    if (separator === "\n") throw new Error("历史记录不应通过换行符整体拼接");
+    return originalJoin.call(this, separator);
+  };
+  try {
+    persistReceiptRecord(record, outputPath, dataDir);
+  } finally {
+    Array.prototype.join = originalJoin;
+  }
+
+  const history = fs.readFileSync(path.join(dataDir, "history.jsonl"), "utf8");
+  assert.equal(history.trim().split("\n").length, 1);
+  assert.equal(JSON.parse(history).id, record.id);
+});

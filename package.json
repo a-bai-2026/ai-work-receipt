@@ -1,16 +1,16 @@
 {
   "name": "codex-work-receipt",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "type": "module",
   "description": "Generate a privacy-first Codex work receipt from local session metadata.",
   "author": "a-bai-2026",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/a-bai-2026/ai-work-receipt.git"
+    "url": "git+https://github.com/a-bai-2026/codex-work-receipt.git"
   },
-  "homepage": "https://github.com/a-bai-2026/ai-work-receipt#readme",
+  "homepage": "https://github.com/a-bai-2026/codex-work-receipt#readme",
   "bugs": {
-    "url": "https://github.com/a-bai-2026/ai-work-receipt/issues"
+    "url": "https://github.com/a-bai-2026/codex-work-receipt/issues"
   },
   "license": "GPL-3.0-only",
   "keywords": [

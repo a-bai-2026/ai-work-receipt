@@ -10,6 +10,8 @@ AI Work Receipt reads Codex sessions, computes metrics, and renders receipts loc
 - Event types, timestamps, model names, and numerical metadata
 - Metrics such as turns, tool calls, Tokens, duration, and interruptions
 
+Session logs are parsed locally in bounded chunks, one JSONL row at a time. After each row is parsed, only fields needed for metrics remain in memory; prompts, responses, images, and tool output are discarded from the in-memory statistics representation.
+
 ## What receipts exclude
 
 - Prompts and response text

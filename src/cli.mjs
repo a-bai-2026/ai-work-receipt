@@ -9,6 +9,7 @@ import QRCode from "qrcode";
 import { parseArgs, printHelp } from "./core/args.mjs";
 import { buildCanonicalFacts } from "./core/fact-buckets.mjs";
 import { collectMetrics } from "./core/metrics.mjs";
+import { printOpenSourcePrompt } from "./core/open-source.mjs";
 import { getRollingSummaryNotice, getScopeLabel } from "./core/presentation.mjs";
 import { encodeReceiptPayloads } from "./core/qr-payload.mjs";
 import { outputSlugForRange, resolveRange } from "./core/range.mjs";
@@ -81,6 +82,7 @@ async function main() {
       console.log("请重启 Codex，打开 Settings > Pets，点击 Refresh 后选择“票仔 · AI 小票工”。");
       console.log("输入 /pet 唤醒票仔；以后可以说：票仔，开今天的票。");
     }
+    printOpenSourcePrompt("pet", options.locale);
     return;
   }
   if (options.uninstallPet) {
@@ -163,6 +165,7 @@ async function main() {
     }
     if (!miniProgramCodeDataUrl) console.log("小程序码：尚未配置，页面使用明确占位符");
   }
+  printOpenSourcePrompt("receipt", options.locale);
   if (options.open) openFile(outputFile);
 }
 

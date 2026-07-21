@@ -155,11 +155,13 @@ export function persistReceiptRecord(record, outputHtmlPath, requestedDataDir = 
   }
   const history = [...deduplicated.values()]
     .sort((left, right) => String(left.period?.end_at).localeCompare(String(right.period?.end_at)));
-  fs.writeFileSync(
-    path.join(dataDir, "history.jsonl"),
-    history.length ? `${history.map((item) => JSON.stringify(item)).join("\n")}\n` : "",
-    "utf8",
-  );
+  const historyPath = path.join(dataDir, "history.jsonl");
+  const historyDescriptor = fs.openSync(historyPath, "w");
+  try {
+    for (const item of history) fs.writeSync(historyDescriptor, `${JSON.stringify(item)}\n`, null, "utf8");
+  } finally {
+    fs.closeSync(historyDescriptor);
+  }
 
   const companionPath = /\.html?$/i.test(outputHtmlPath)
     ? outputHtmlPath.replace(/\.html?$/i, ".json")

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.3
+
+- Codex 会话日志改为分块逐行解析，避免超大 `.jsonl` 在转成单个 JavaScript 字符串时触发 V8 长度上限。
+- 会话行解析后立即丢弃 Prompt、回复、图片和工具输出，只在内存中保留统计所需的时间、事件、模型与 Token 字段。
+- 单行异常过大时带文件路径和行号跳过；文件读取失败时补充路径与体积，便于定位具体日志。
+- 本地 `history.jsonl` 改为逐条写入，避免历史增长后形成同类的大字符串拼接风险。
+- 小票生成或票仔安装成功后在终端展示开源仓库地址，并用对应的中英文文案邀请用户为项目点 Star。
+- 修正 npm 包的 repository、homepage 和 issues 地址，使其统一指向 `a-bai-2026/codex-work-receipt`。
+
 ## 0.7.2
 
 - 修复同一 Codex 会话存在多份 append-only 日志修订时生成重复 canonical factId、导致小程序云端入库拒绝的问题。
