@@ -157,6 +157,38 @@ test("小票生成成功后只输出一次项目地址和 Star 引导", () => {
   assert.match(fs.readFileSync(path.join(fixture.tempDir, "receipt.html"), "utf8"), /下载微信导入文件/);
 });
 
+test("自动与手动模式配置成功后各输出一次小票 Star 引导", () => {
+  const automaticFixture = createCliEnvironment();
+  const automaticOutput = execFileSync(process.execPath, [
+    CLI_PATH,
+    "--enable-auto",
+    "--lang",
+    "en",
+    "--data-dir",
+    path.join(automaticFixture.tempDir, "data"),
+  ], {
+    cwd: automaticFixture.tempDir,
+    env: automaticFixture.environment,
+    encoding: "utf8",
+  });
+  assert.equal(countOccurrences(automaticOutput, OPEN_SOURCE_REPOSITORY_URL), 1);
+  assert.match(automaticOutput, /If you enjoy AI Work Receipt/);
+
+  const manualFixture = createCliEnvironment();
+  const manualOutput = execFileSync(process.execPath, [
+    CLI_PATH,
+    "--disable-auto",
+    "--data-dir",
+    path.join(manualFixture.tempDir, "data"),
+  ], {
+    cwd: manualFixture.tempDir,
+    env: manualFixture.environment,
+    encoding: "utf8",
+  });
+  assert.equal(countOccurrences(manualOutput, OPEN_SOURCE_REPOSITORY_URL), 1);
+  assert.match(manualOutput, /如果你也喜欢这个 AI 小票工具/);
+});
+
 test("超过单个二维码容量时 CLI 仍完整输出文件导入流程", () => {
   const fixture = createCliEnvironment();
   writeManySessions(fixture.codexHome, 80);
@@ -217,7 +249,7 @@ test("单独安装票仔和安装 Companion 都只输出一次票仔 Star 引导
   assert.match(companionOutput, /If you enjoy Ticket Buddy/);
 });
 
-test("帮助、卸载和失败输出不会展示 Star 引导", () => {
+test("帮助、状态、卸载和失败输出不会展示 Star 引导", () => {
   const fixture = createCliEnvironment();
   const helpOutput = execFileSync(process.execPath, [CLI_PATH, "--help"], {
     cwd: fixture.tempDir,
@@ -229,6 +261,16 @@ test("帮助、卸载和失败输出不会展示 Star 引导", () => {
     env: fixture.environment,
     encoding: "utf8",
   });
+  const statusOutput = execFileSync(process.execPath, [
+    CLI_PATH,
+    "--auto-status",
+    "--data-dir",
+    path.join(fixture.tempDir, "data"),
+  ], {
+    cwd: fixture.tempDir,
+    env: fixture.environment,
+    encoding: "utf8",
+  });
   const failed = spawnSync(process.execPath, [CLI_PATH, "--unknown-option"], {
     cwd: fixture.tempDir,
     env: fixture.environment,
@@ -236,6 +278,7 @@ test("帮助、卸载和失败输出不会展示 Star 引导", () => {
   });
 
   assert.doesNotMatch(helpOutput, new RegExp(OPEN_SOURCE_REPOSITORY_URL));
+  assert.doesNotMatch(statusOutput, new RegExp(OPEN_SOURCE_REPOSITORY_URL));
   assert.doesNotMatch(uninstallOutput, new RegExp(OPEN_SOURCE_REPOSITORY_URL));
   assert.notEqual(failed.status, 0);
   assert.doesNotMatch(`${failed.stdout}${failed.stderr}`, new RegExp(OPEN_SOURCE_REPOSITORY_URL));

@@ -77,10 +77,11 @@ function enableAuto(options) {
   });
   startAutomaticRun(result.config);
   printAutomaticEnabled(result, options.locale);
+  printOpenSourcePrompt("receipt", options.locale);
   return result;
 }
 
-function enableManual(options) {
+function enableManual(options, { showOpenSourcePrompt = true } = {}) {
   const result = configureManualMode({
     dataDir: options.dataDir,
     locale: options.locale,
@@ -88,6 +89,7 @@ function enableManual(options) {
     theme: options.theme,
   });
   printManualEnabled(result, options.locale);
+  if (showOpenSourcePrompt) printOpenSourcePrompt("receipt", options.locale);
   return result;
 }
 
@@ -191,7 +193,7 @@ async function main() {
         enableAuto(options);
         return;
       }
-      enableManual(options);
+      enableManual(options, { showOpenSourcePrompt: false });
     }
     const selected = await promptForRange({
       locale: options.locale,
