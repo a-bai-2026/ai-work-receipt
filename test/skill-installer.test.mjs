@@ -31,6 +31,17 @@ test("Companion 与 Pet 参数会切换到对应安装模式", () => {
   assert.equal(parseArgs(["--uninstall-pet"]).uninstallPet, true);
 });
 
+test("自动保存管理参数可以独立解析且不会混入统计范围", () => {
+  assert.equal(parseArgs(["--setup"]).setup, true);
+  assert.equal(parseArgs(["--enable-auto"]).enableAuto, true);
+  assert.equal(parseArgs(["--disable-auto"]).disableAuto, true);
+  assert.equal(parseArgs(["--auto-status"]).autoStatus, true);
+  assert.throws(() => parseArgs(["--enable-auto", "--today"]), /不能与统计范围参数同时使用/);
+  assert.throws(() => parseArgs(["--enable-auto", "--disable-auto"]), /不能同时使用/);
+  assert.throws(() => parseArgs(["--enable-auto", "--timezone", "Mars/Olympus"]), /不支持的时区/);
+  assert.throws(() => parseArgs(["--enable-auto", "--install-companion"]), /不能与 Skill 或桌宠管理参数同时使用/);
+});
+
 test("Codex Skill 会安装到用户目录并安全覆盖旧版本", () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-work-receipt-skill-"));
   const projectDir = path.join(tempDir, "project");

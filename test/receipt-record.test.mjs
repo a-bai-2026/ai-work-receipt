@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { decodeReceiptFile } from "../src/core/file-payload.mjs";
 import { buildReceiptRecord, persistReceiptRecord } from "../src/core/receipt-record.mjs";
 
 const metrics = {
@@ -118,8 +119,10 @@ test("无扩展名输出不会被结构 JSON 覆盖", () => {
   const persisted = persistReceiptRecord(record, outputPath, dataDir);
 
   assert.equal(persisted.companionPath, `${outputPath}.json`);
+  assert.equal(persisted.transferPath, `${outputPath}.cwr.json`);
   assert.equal(fs.readFileSync(outputPath, "utf8"), "<html>receipt</html>");
   assert.equal(JSON.parse(fs.readFileSync(persisted.companionPath, "utf8")).id, record.id);
+  assert.equal(decodeReceiptFile(fs.readFileSync(persisted.transferPath, "utf8")).i, record.id);
 });
 
 test("本地历史逐条写入而不是拼接成单个大字符串", () => {

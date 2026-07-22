@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Turn local Codex activity into a work receipt you can keep and share.</strong><br>
-  One command · Local-first · Codex pet · Three themes · Mobile QR import
+  One command · Local-first · Codex pet · Three themes · WeChat file import
 </p>
 
 <p align="center">
@@ -22,7 +22,7 @@
 
 Codex Work Receipt summarizes turns, tool calls, Tokens, duration, and models, then turns them into playful AI work points, a job title, and a review. Receipts never include prompts, responses, source code, project paths, or file names.
 
-Version `0.6.0` uses the cwr2 protocol to create stable privacy-safe facts for each session and calendar day. Overlapping today, last-seven-days, and this-week receipts can be deduplicated by the receiver, and oversized payloads are automatically split into reorderable multipart QR codes that rotate one at a time in the HTML so the camera never sees multiple data codes at once.
+The cwr2 protocol creates stable privacy-safe facts for each session and calendar day, allowing overlapping today, last-seven-days, and this-week receipts to be deduplicated. Every receipt also produces one `.cwr.json` WeChat import file. Scan import appears only when the complete payload fits in one data QR code.
 
 ## Meet Ticket Buddy
 
@@ -36,7 +36,7 @@ Version `0.6.0` uses the cwr2 protocol to create stable privacy-safe facts for e
 
 ## Quickstart
 
-Requires Node.js 20+ and local Codex session records. No clone required; choose today, the last 3 hours, the last 7 days, this week, or a specific session:
+Requires Node.js 20+ and local Codex session records. No clone is required. The first interactive run asks whether to save automatically or use manual-only mode. Manual mode then offers today, the last 3 hours, the last 7 days, this week, or a specific session:
 
 ```bash
 npx codex-work-receipt@latest --lang en
@@ -56,7 +56,27 @@ npx codex-work-receipt@latest --hours 3 --lang en
 
 “Last N hours” is a rolling summary for private history only. It does not participate in AI Work Cooperative deduplicated accounting. Use today, this week, the last seven days, or a specific session when you want accountable canonical facts.
 
-HTML and structured data are written to `./codex-work-receipt-output/` by default. The generated page can save a high-resolution PNG containing only the full receipt and WeChat mini-program code; data QR codes are excluded. Non-interactive options such as `--latest` and `--today` remain available; see the [CLI guide](docs/cli.en.md).
+HTML, structured data, and the WeChat import file are written to `./codex-work-receipt-output/` by default. The page can download its `.cwr.json` file and save a high-resolution PNG containing only the full receipt and WeChat mini-program code. See the [CLI guide](docs/cli.en.md).
+
+## Automatic saving or manual only
+
+Automatic saving uses the Codex `Stop` hook. Whenever a Codex turn stops, it quietly refreshes the same daily HTML, full JSON, and `.cwr.json` WeChat import file on this computer. It does not open a browser, upload files, or run a persistent watcher. The automatic path is file-first and does not generate a data QR.
+
+Choose the mode again:
+
+```bash
+npx codex-work-receipt@latest --setup --lang en
+```
+
+Or enable, disable, and inspect automatic saving directly:
+
+```bash
+npx codex-work-receipt@latest --enable-auto --lang en
+npx codex-work-receipt@latest --disable-auto --lang en
+npx codex-work-receipt@latest --auto-status --lang en
+```
+
+Automatic receipts live under `~/.codex-work-receipt/auto/YYYY-MM-DD/`. Switching to manual-only mode removes only the AI Work Receipt hook; it keeps existing receipts and unrelated Codex hooks. Restart Codex after installing the hook. If Codex asks you to review it, use `/hooks` to inspect and trust it. See the official [Codex hooks documentation](https://learn.chatgpt.com/docs/hooks).
 
 ## Ask Codex directly
 
@@ -86,15 +106,15 @@ Codex will choose the range and theme, run the CLI, and open the receipt. See th
 
 ## Desktop to mobile
 
-The desktop page generates one or more privacy-safe data QR codes. The companion WeChat mini program supports multipart scanning, private history, themes, and image export. See [mobile import](docs/mobile-import.en.md).
+The desktop page generates one privacy-safe `.cwr.json` file. Send it to WeChat File Transfer, then choose “Import from chat file” in the companion mini program. A single data QR remains available only for receipts that fit completely in one code. See [mobile import](docs/mobile-import.en.md).
 
 ## Docs
 
 - [CLI usage and options](docs/cli.en.md)
 - [Codex Skill](docs/codex-skill.en.md)
 - [Ticket Buddy Codex pet](docs/codex-pet.en.md)
-- [Mobile QR import](docs/mobile-import.en.md)
-- [Data schema and QR protocol](docs/data-schema.en.md)
+- [Mobile file and single-QR import](docs/mobile-import.en.md)
+- [Data schema, file, and QR protocol](docs/data-schema.en.md)
 - [Local data and privacy](docs/privacy.en.md)
 - [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
 

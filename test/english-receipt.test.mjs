@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Script } from "node:vm";
 
-import { compactReceipt } from "../src/core/qr-payload.mjs";
 import { OPEN_SOURCE_REPOSITORY_URL } from "../src/core/open-source.mjs";
 import { getWorkProfileCopy, selectWorkProfileId } from "../src/core/presentation.mjs";
 import { buildReceiptRecord } from "../src/core/receipt-record.mjs";
+import { compactReceipt } from "../src/core/transfer-record.mjs";
 import { renderHtml } from "../src/renderers/html.mjs";
 
 const metrics = {
@@ -66,14 +66,31 @@ test("英文 HTML 会完整本地化主要小票内容", () => {
   assert.match(html, /--paper: #66742f/);
   assert.match(html, /--ink: #ffe077/);
   assert.match(html, /Open mini program/);
-  assert.match(html, /qr-grid qr-grid--single/);
-  assert.doesNotMatch(html, /id="multipart-live"/);
-  assert.match(html, /Structured data is also stored locally/);
+  assert.match(html, /Download WeChat import file/);
+  assert.match(html, /Import from a chat file/);
+  assert.match(html, /Or import by scanning/);
+  assert.equal((html.match(/data-data-qr-panel hidden/g) || []).length, 1);
+  assert.doesNotMatch(html, /multipart|Data part|rotate automatically/i);
+  assert.match(html, /Structured data and the WeChat import file stay on this computer/);
   assert.match(html, /Save full PNG/);
   assert.match(html, /Enjoying it\? Star on GitHub ⭐/);
-  assert.equal(html.split(OPEN_SOURCE_REPOSITORY_URL).length - 1, 1);
+  assert.equal(html.split(OPEN_SOURCE_REPOSITORY_URL).length - 1, 2);
   assert.match(html, /class="github-star-link"[^>]+target="_blank"[^>]+rel="noopener noreferrer"/);
+  assert.match(html, /<div class="layout">/);
+  assert.match(html, /<aside class="sidebar" aria-label="Related information">/);
+  assert.match(html, /Support the project/);
+  assert.match(html, /View the changelog →/);
+  assert.match(html, new RegExp(`${OPEN_SOURCE_REPOSITORY_URL}/blob/main/CHANGELOG\\.md`));
+  assert.match(html, /href="https:\/\/modelflare\.dev\/sign-up\?partner=OB9YXNSEEGOL"/);
+  assert.match(html, /<img src="data:image\/png;base64,[A-Za-z0-9+/=]+" alt="ModelFlare logo"/);
+  assert.equal((html.match(/target="_blank" rel="noopener noreferrer"/g) || []).length, 3);
+  assert.doesNotMatch(html, /raw\.githubusercontent\.com/);
   assert.match(html, /id="save-receipt-image"/);
+  assert.match(html, /\.theme-button:first-child/);
+  assert.match(html, /\.theme-button:last-child/);
+  assert.match(html, /buttons\.forEach\(\(button\) => button\.setAttribute\("aria-pressed"/);
+  assert.match(html, /@media \(max-width: 1020px\)[\s\S]*?\.sidebar \{[\s\S]*?position: static/);
+  assert.match(html, /@media \(max-width: 420px\)[\s\S]*?\.toolbar \{[\s\S]*?flex-direction: column/);
   assert.match(html, /domtoimage\.toPng/);
   assert.match(html, /data-barcode-value="[A-Z0-9]+-008"/);
   assert.match(html, /barcode-segment--bar/);
@@ -87,12 +104,20 @@ test("英文 HTML 会完整本地化主要小票内容", () => {
   assert.match(exportMarkup, /paper receipt/);
   assert.match(exportMarkup, /paper transfer-stub/);
   assert.doesNotMatch(exportMarkup, /theme-switcher|save-receipt-image|class="privacy"/);
-  assert.doesNotMatch(exportMarkup, /github-star-link|Star on GitHub/);
+  assert.doesNotMatch(exportMarkup, /github-star-link|Star on GitHub|sidebar|Changelog|ModelFlare/);
   assert.match(html, /function sanitizeExportNode/);
-  assert.match(html, /node\.querySelectorAll\("\[data-data-qr-index\]"\)\.forEach\(\(item\) => item\.remove\(\)\)/);
-  assert.match(html, /grid\.style\.gridTemplateColumns = "minmax\(0, 1fr\)"/);
+  assert.match(html, /function normalizeExportTextLayout/);
+  assert.match(html, /\.meta > div, \.receipt-row > span, \.receipt-row > strong, \.salary-line > span, \.salary-line > strong/);
+  assert.match(html, /\["width", "height", "inline-size", "block-size"\]\.forEach/);
+  assert.match(html, /value\.style\.setProperty\("white-space", "nowrap"\)/);
+  assert.match(html, /value\.style\.setProperty\("flex-shrink", "0"\)/);
+  assert.match(html, /onclone\(clone\) \{[\s\S]*?sanitizeExportNode\(clone\);[\s\S]*?normalizeExportTextLayout\(clone\);/);
+  assert.match(html, /node\.querySelector\("\[data-file-import-controls\]"\)/);
+  assert.match(html, /node\.querySelector\("\[data-data-qr-panel\]"\)/);
+  assert.match(html, /transferLayout\.style\.gridTemplateColumns = "minmax\(0, 1fr\)"/);
   assert.match(html, /domtoimage\.toPng\(renderNode/);
   assert.match(html, /data-export-mini-label/);
+  assert.match(html, /new Blob\(\[transferConfig\.content\]/);
 });
 
 test("中文 HTML 展示对应的 GitHub Star 引导", () => {
@@ -100,34 +125,28 @@ test("中文 HTML 展示对应的 GitHub Star 引导", () => {
   const html = renderHtml({ record, dataQrDataUrl: "data:image/png;base64,DATA" });
 
   assert.match(html, /喜欢这个工具？点个 Star ⭐/);
-  assert.equal(html.split(OPEN_SOURCE_REPOSITORY_URL).length - 1, 1);
+  assert.match(html, /<aside class="sidebar" aria-label="相关信息">/);
+  assert.match(html, /支持项目/);
+  assert.match(html, /更新日志/);
+  assert.match(html, /赞助伙伴/);
+  assert.equal(html.split(OPEN_SOURCE_REPOSITORY_URL).length - 1, 2);
 });
 
-test("多分片 HTML 实时轮播数据码，导出时仅保留小程序码", () => {
+test("没有单码数据时只保留聊天文件导入，不渲染扫码备选", () => {
   const record = buildReceiptRecord(metrics, "classic", "zh-CN");
   const html = renderHtml({
     record,
-    dataQrDataUrls: [
-      "data:image/png;base64,PART1",
-      "data:image/png;base64,PART2",
-      "data:image/png;base64,PART3",
-    ],
     miniProgramCodeDataUrl: "data:image/png;base64,MINI",
   });
 
-  assert.match(html, /id="multipart-live"/);
-  assert.match(html, /id="multipart-setup"/);
-  assert.match(html, /id="multipart-stage" hidden/);
-  assert.match(html, /id="multipart-active-qr"/);
-  assert.equal((html.match(/id="multipart-active-qr"/g) || []).length, 1);
-  assert.match(html, /qr-grid qr-grid--export-only/);
-  assert.match(html, /data-data-qr-index="0"/);
-  assert.match(html, /data-data-qr-index="2"/);
-  assert.match(html, /startMultipartTransfer/);
-  assert.match(html, /showMultipartSetup/);
+  assert.match(html, /下载微信导入文件/);
+  assert.match(html, /文件传输助手/);
+  assert.doesNotMatch(html, /data-data-qr-panel hidden/);
+  assert.doesNotMatch(html, /data-show-data-qr type=/);
+  assert.doesNotMatch(html, /也可以扫码导入/);
+  assert.doesNotMatch(html, /multipart|分片二维码|自动轮播/i);
   assert.match(html, /sanitizeExportNode\(clone\)/);
   assert.match(html, /miniProgramLabel\.textContent = exportConfig\.miniProgramLabel/);
-  assert.doesNotMatch(html, /qr-grid qr-grid--single/);
 
   const inlineScripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
   assert.ok(inlineScripts.length > 0);

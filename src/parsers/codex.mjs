@@ -220,8 +220,8 @@ function sessionFromFile(file) {
   };
 }
 
-function codexSessionFiles() {
-  const codexHome = process.env.CODEX_HOME || path.join(os.homedir(), ".codex");
+function codexSessionFiles(requestedCodexHome = null) {
+  const codexHome = requestedCodexHome || process.env.CODEX_HOME || path.join(os.homedir(), ".codex");
   const sessionsDirectory = path.join(codexHome, "sessions");
   const files = walkJsonlFiles(sessionsDirectory)
     .map((filePath) => {
@@ -275,8 +275,8 @@ export function deduplicateCodexSessions(sessions) {
   return [...selected.values()];
 }
 
-export function loadCodexSessions(range) {
-  const files = codexSessionFiles();
+export function loadCodexSessions(range, { codexHome = null } = {}) {
+  const files = codexSessionFiles(codexHome);
   let candidates = files;
   let scanMode = "none";
 
@@ -310,8 +310,8 @@ export function loadCodexSessions(range) {
   return sessions;
 }
 
-export function listRecentCodexSessions(limit = 10) {
-  const sessions = deduplicateCodexSessions(codexSessionFiles()
+export function listRecentCodexSessions(limit = 10, { codexHome = null } = {}) {
+  const sessions = deduplicateCodexSessions(codexSessionFiles(codexHome)
     .slice(0, Math.max(40, limit * 3))
     .map(sessionFromFile)
     .filter((session) => session.rows.length))

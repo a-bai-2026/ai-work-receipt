@@ -1,8 +1,8 @@
-# 数据结构与二维码协议
+# 数据结构、文件与二维码协议
 
 <p><strong>中文</strong> · <a href="./data-schema.en.md">English</a> · <a href="../README.md">返回 README</a></p>
 
-当前结构版本为 `1`。每次生成都会在本机保存一份结构记录。
+当前完整记录结构版本为 `2`；滚动小时摘要为了兼容继续使用版本 `1`。每次生成都会在本机保存完整结构记录和一份脱敏微信导入文件。
 
 ## 主要字段
 
@@ -18,6 +18,29 @@
 
 同一个会话、同一天或同一组自然日边界的 `id` 保持稳定；重复生成会更新该记录。`source.snapshot_hash` 用于识别统计内容是否发生变化。
 
+## 微信导入文件
+
+每次生成都会在 HTML 旁边写入一个 `*.cwr.json`：
+
+```json
+{
+  "format": "codex-work-receipt",
+  "file_version": 1,
+  "payload_schema": "cwr2",
+  "payload": {},
+  "integrity": {
+    "algorithm": "sha256",
+    "digest": "..."
+  }
+}
+```
+
+`payload` 与二维码解压后的精简结构完全相同。`integrity.digest` 是对规范化 payload JSON 计算的完整 SHA-256，用于发现损坏，但不是来源签名。小程序必须把文件视为不可信输入，限制文件大小，校验版本、字段、数值范围、factId 唯一性、manifest 和 content hash，并在用户确认后原子入库。
+
+规范化规则是：递归按 JavaScript 默认字符串排序（UTF-16 code unit 顺序）排列每个对象的键，保持数组元素顺序，使用 JSON 原始类型，不添加空白或换行，再对生成的 UTF-8 字节计算 SHA-256。兼容实现可用 `docs/fixtures/cwr-file-v1.json` 的 digest 做交叉验证。
+
+兼容测试夹具见 `docs/fixtures/cwr-file-v1.json`。
+
 ## 二维码格式
 
 二维码使用精简字段：
@@ -28,7 +51,9 @@ cwr2.<checksum>.<deflateRaw(JSON) 的 Base64URL>
 cwr2p.<transferId>.<partIndex>.<partCount>.<totalChecksum>.<partChecksum>.<chunk>
 ```
 
-`cwr1` 和 `cwr2` 是完整单码。`cwr2p` 是 cwr2 单码字符串的可乱序分片，最多 12 片；小程序先按 transferId 收集全部分片，再校验总 checksum、拼回 cwr2 并解压。HTML 在多分片时每次只轮播一个数据码，协议本身不依赖扫描顺序。
+`cwr1` 和 `cwr2` 是完整单码。桌面端只有在完整载荷不超过安全 QR version 时才生成一个数据二维码；否则只提供 `.cwr.json` 文件，不再生成新的分片二维码。
+
+`cwr2p` 是旧版桌面端生成的可乱序 cwr2 分片，最多 12 片。新版小程序仍应收集相同 transferId 的历史分片、校验分片和总 checksum、拼回 cwr2 并解压，以兼容已经生成的小票。
 
 小程序应检查前缀和校验值，再解压并解析数据。未来结构升级通过 `v` 字段兼容。
 
@@ -38,4 +63,4 @@ cwr2p.<transferId>.<partIndex>.<partCount>.<totalChecksum>.<partChecksum>.<chunk
 
 `presentation.compensation` 是娱乐化 AI 工分，不代表真实 API 费用。为兼容当前中文小程序，二维码展示文案继续使用中文，并通过精简字段 `l` 和 `r` 携带桌面语言及工种语义 ID；英文 HTML 和本地 JSON 不受影响。
 
-手机端流程见 [手机扫码导入](mobile-import.md)。
+手机端流程见 [手机文件与单码导入](mobile-import.md)。

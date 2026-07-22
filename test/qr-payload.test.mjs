@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import test from "node:test";
 
 import {
   decodeMultipartReceiptPayloads,
   decodeReceiptPayload,
   encodeReceiptPayload,
-  encodeReceiptPayloads,
+  encodeSingleReceiptQr,
 } from "../src/core/qr-payload.mjs";
 
 const record = {
@@ -165,7 +166,24 @@ test("cwr2 单码保留 canonical manifest 和 facts", () => {
   assert.equal(decoded.f.length, 2);
 });
 
-test("过大的 cwr2 会分片并可乱序重组", () => {
+function legacyChecksum(value, length = 8) {
+  return crypto.createHash("sha256").update(value).digest("hex").slice(0, length);
+}
+
+function legacyMultipartPayloads(singlePayload, partCount = 3) {
+  const transferId = legacyChecksum(singlePayload, 12);
+  const totalChecksum = legacyChecksum(singlePayload);
+  const chunkSize = Math.ceil(singlePayload.length / partCount);
+  const chunks = [];
+  for (let offset = 0; offset < singlePayload.length; offset += chunkSize) {
+    chunks.push(singlePayload.slice(offset, offset + chunkSize));
+  }
+  return chunks.map((chunk, index) => (
+    `cwr2p.${transferId}.${index + 1}.${chunks.length}.${totalChecksum}.${legacyChecksum(chunk)}.${chunk}`
+  ));
+}
+
+test("过大的 cwr2 不再生成分片二维码，但历史分片仍可乱序解码", () => {
   const facts = Array.from({ length: 8 }, (_, index) => cwr2Fact(index));
   const cwr2Record = {
     ...record,
@@ -191,9 +209,18 @@ test("过大的 cwr2 会分片并可乱序重组", () => {
     },
     facts,
   };
-  const payloads = encodeReceiptPayloads(cwr2Record, { maxVersion: 10 });
-  assert.ok(payloads.length > 1);
+  assert.equal(encodeSingleReceiptQr(cwr2Record, { maxVersion: 10 }), null);
+  const payloads = legacyMultipartPayloads(encodeReceiptPayload(cwr2Record));
   const decoded = decodeMultipartReceiptPayloads([...payloads].reverse());
   assert.equal(decoded.i, "cwr2_multipart");
   assert.equal(decoded.f.length, 8);
+});
+
+test("只有完整载荷能放进一个二维码时才返回扫码数据", () => {
+  const encoded = encodeSingleReceiptQr(record);
+
+  assert.ok(encoded);
+  assert.equal(typeof encoded.payload, "string");
+  assert.ok(encoded.version <= 25);
+  assert.equal(decodeReceiptPayload(encoded.payload).i, record.id);
 });

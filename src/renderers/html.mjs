@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 
 import { buildCode128B } from "../core/barcode.mjs";
+import { createReceiptFile } from "../core/file-payload.mjs";
 import { formatDate, formatDuration, formatNumber, formatTime } from "../lib/time.mjs";
 import {
   buildCompensation,
@@ -13,7 +14,14 @@ import {
 import { getHtmlStarPrompt } from "../core/open-source.mjs";
 
 const require = createRequire(import.meta.url);
-const DOM_TO_IMAGE_SOURCE = fs.readFileSync(require.resolve("dom-to-image-more"), "utf8");
+const DOM_TO_IMAGE_SOURCE = fs.readFileSync(
+  process.env.CODEX_WORK_RECEIPT_DOM_TO_IMAGE || require.resolve("dom-to-image-more"),
+  "utf8",
+);
+const MODELFLARE_LOGO_DATA_URL = `data:image/png;base64,${fs.readFileSync(
+  new URL("../../docs/images/sponsors/modelflare-logo.png", import.meta.url),
+).toString("base64")}`;
+const MODELFLARE_URL = "https://modelflare.dev/sign-up?partner=OB9YXNSEEGOL";
 
 function inlineScript(value) {
   return String(value).replaceAll("</script", "<\\/script");
@@ -54,17 +62,11 @@ function formatDateKey(value, locale) {
   return locale === "en" ? `${match[2]}/${match[3]}/${match[1]}` : `${match[1]}/${match[2]}/${match[3]}`;
 }
 
-function formatCopy(template, values) {
-  return Object.entries(values).reduce(
-    (result, [key, value]) => result.replaceAll(`{${key}}`, String(value)),
-    String(template),
-  );
-}
-
-export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null, miniProgramCodeDataUrl = null }) {
+export function renderHtml({ record, dataQrDataUrl = null, miniProgramCodeDataUrl = null, transferFile = null }) {
   const locale = record.locale || DEFAULT_LOCALE;
   const copy = getReceiptCopy(locale);
   const githubStarPrompt = getHtmlStarPrompt(locale);
+  const changelogUrl = `${githubStarPrompt.url}/blob/main/CHANGELOG.md`;
   const startAt = new Date(record.period.start_at);
   const endAt = new Date(record.period.end_at);
   const timezone = record.period.timezone;
@@ -92,13 +94,25 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   }).format(record.stats.average_first_token_ms / 1000);
+  const fileBase = `codex-work-receipt-${record.source.scope}-${spansMultipleDates ? `${rangeStartDate}-to-${rangeEndDate}` : `${rangeEndDate}-${record.id.slice(4, 12)}`}`;
   const exportConfig = JSON.stringify({
     idleLabel: copy.exportImage,
     busyLabel: copy.exportingImage,
     successLabel: copy.exportSuccess,
     errorLabel: copy.exportError,
     miniProgramLabel: copy.exportMiniProgramLabel,
-    fileBase: `codex-work-receipt-${record.source.scope}-${spansMultipleDates ? `${rangeStartDate}-to-${rangeEndDate}` : `${rangeEndDate}-${record.id.slice(4, 12)}`}`,
+    fileBase,
+  }).replaceAll("<", "\\u003c");
+  const resolvedTransferFile = transferFile || {
+    ...createReceiptFile(record),
+    filename: `${fileBase}.cwr.json`,
+  };
+  const transferConfig = JSON.stringify({
+    filename: resolvedTransferFile.filename || `${fileBase}.cwr.json`,
+    content: resolvedTransferFile.content,
+    mimeType: resolvedTransferFile.mimeType,
+    successLabel: copy.downloadSuccess,
+    errorLabel: copy.downloadError,
   }).replaceAll("<", "\\u003c");
   const rows = [
     receiptRow(copy.rows.scope, scopeLabel),
@@ -116,61 +130,45 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
   const miniProgramVisual = miniProgramCodeDataUrl
     ? `<img src="${miniProgramCodeDataUrl}" alt="${escapeHtml(copy.miniProgramAlt)}">`
     : `<div class="mini-placeholder" role="img" aria-label="${escapeHtml(copy.placeholderAria)}"><span>${escapeHtml(copy.placeholderLabel)}</span><strong>${escapeHtml(copy.placeholderValue)}</strong></div>`;
-  const qrUrls = Array.isArray(dataQrDataUrls) && dataQrDataUrls.length
-    ? dataQrDataUrls
-    : dataQrDataUrl
-      ? [dataQrDataUrl]
-      : [];
-  const dataQrItems = qrUrls.map((url, index) => `
-        <div class="qr-item" data-data-qr-index="${index}">
-          <div class="qr-frame"><img src="${url}" alt="${escapeHtml(copy.dataQrAlt)} ${index + 1}/${qrUrls.length}"></div>
-          <strong>${escapeHtml(copy.importData)}${qrUrls.length > 1 ? ` ${index + 1}/${qrUrls.length}` : ""}</strong>
-          <span>${escapeHtml(copy.importDataHint)}</span>
-        </div>`).join("");
-  const isMultipart = qrUrls.length > 1;
-  const multipartSetupSeconds = 10;
-  const multipartConfig = JSON.stringify({
-    enabled: isMultipart,
-    setupSeconds: multipartSetupSeconds,
-    frameMs: 4000,
-    blankMs: 240,
-    setupHint: copy.multipartOpenHint,
-    partLabel: copy.multipartPartLabel,
-  }).replaceAll("<", "\\u003c");
-  const transferVisual = isMultipart
+  const fileImportSteps = copy.fileImportSteps
+    .map((step) => `<li>${escapeHtml(step)}</li>`)
+    .join("");
+  const dataQrPanel = dataQrDataUrl
     ? `
-      <div class="multipart-live" id="multipart-live">
-        <div class="multipart-panel multipart-setup" id="multipart-setup">
-          <div class="qr-item multipart-setup__item">
+        <div class="qr-item qr-panel" data-data-qr-panel hidden>
+          <div class="qr-frame qr-frame--large"><img src="${dataQrDataUrl}" alt="${escapeHtml(copy.dataQrAlt)}"></div>
+          <strong>${escapeHtml(copy.dataQrTitle)}</strong>
+          <span>${escapeHtml(copy.dataQrHint)}</span>
+          <button class="secondary-button" data-show-mini-program type="button">${escapeHtml(copy.showMiniProgramCode)}</button>
+        </div>`
+    : "";
+  const scanAlternative = dataQrDataUrl
+    ? `
+        <div class="scan-alternative">
+          <strong>${escapeHtml(copy.scanAlternativeTitle)}</strong>
+          <span>${escapeHtml(copy.scanAlternativeHint)}</span>
+          <button class="secondary-button" data-show-data-qr type="button">${escapeHtml(copy.showDataQr)}</button>
+        </div>`
+    : "";
+  const transferVisual = `
+      <div class="transfer-layout">
+        <div class="qr-switcher">
+          <div class="qr-item qr-panel" data-mini-program-panel>
             <div class="qr-frame qr-frame--large">${miniProgramVisual}</div>
-            <strong>${escapeHtml(copy.multipartOpenTitle)}</strong>
-            <span id="multipart-setup-hint">${escapeHtml(formatCopy(copy.multipartOpenHint, { seconds: multipartSetupSeconds }))}</span>
+            <strong data-export-mini-label>${escapeHtml(copy.openMiniProgram)}</strong>
+            <span>${escapeHtml(copy.openMiniProgramHint)}</span>
           </div>
+          ${dataQrPanel}
         </div>
-        <div class="multipart-panel multipart-stage" id="multipart-stage" hidden>
-          <div class="qr-frame qr-frame--large"><img id="multipart-active-qr" alt="${escapeHtml(copy.dataQrAlt)}"></div>
-          <strong class="multipart-stage__title">${escapeHtml(copy.multipartTransferTitle)}</strong>
-          <span class="multipart-stage__part" id="multipart-part-label">${escapeHtml(formatCopy(copy.multipartPartLabel, { current: 1, total: qrUrls.length }))}</span>
-          <span class="multipart-stage__hint">${escapeHtml(copy.multipartTransferHint)}</span>
-          <button class="multipart-secondary" id="multipart-show-mini" type="button">${escapeHtml(copy.multipartRestart)}</button>
+        <div class="file-import-card" data-file-import-controls>
+          <strong>${escapeHtml(copy.fileImportTitle)}</strong>
+          <ol>${fileImportSteps}</ol>
+          <button class="download-file-button" id="download-import-file" type="button">${escapeHtml(copy.downloadFile)}</button>
+          <span class="download-file-hint">${escapeHtml(copy.downloadFileHint)}</span>
+          <span class="download-status" id="download-status" role="status" aria-live="polite"></span>
+          <p>${escapeHtml(copy.fileImportPrivacy)}</p>
+          ${scanAlternative}
         </div>
-      </div>
-      <div class="qr-grid qr-grid--export-only" hidden>
-        <div class="qr-item">
-          <div class="qr-frame">${miniProgramVisual}</div>
-          <strong data-export-mini-label>${escapeHtml(copy.openMiniProgram)}</strong>
-          <span>${escapeHtml(copy.openMiniProgramHint)}</span>
-        </div>
-        ${dataQrItems}
-      </div>`
-    : `
-      <div class="qr-grid qr-grid--single">
-        <div class="qr-item">
-          <div class="qr-frame">${miniProgramVisual}</div>
-          <strong data-export-mini-label>${escapeHtml(copy.openMiniProgram)}</strong>
-          <span>${escapeHtml(copy.openMiniProgramHint)}</span>
-        </div>
-        ${dataQrItems}
       </div>`;
 
   return `<!doctype html>
@@ -228,82 +226,150 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       transition: background .2s ease, color .2s ease;
     }
-    .page {
-      width: min(100%, 540px);
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 540px) 180px;
+      gap: 240px;
+      max-width: 1020px;
       margin: 0 auto;
       padding: 30px 18px 54px;
+      align-items: start;
     }
-    .toolbar {
-      display: grid;
+    .page {
       width: 100%;
-      justify-items: center;
-      gap: 12px;
-      margin-bottom: 22px;
+      padding: 0;
     }
-    .github-star-link {
-      display: inline-flex;
-      justify-self: end;
+    .sidebar {
+      position: sticky;
+      top: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .sidebar-card {
+      padding: 12px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #1a1a1a;
+      color: #ccc;
+    }
+    .sidebar-card__title {
+      display: flex;
       align-items: center;
-      min-height: 32px;
-      padding: 7px 11px;
-      border: 1px solid color-mix(in srgb, var(--ink) 38%, transparent);
-      border-radius: 999px;
-      background: color-mix(in srgb, var(--paper) 78%, transparent);
-      color: var(--ink);
+      gap: 5px;
+      margin: 0 0 6px;
+      color: #e0e0e0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
       font-size: 11px;
       font-weight: 700;
-      line-height: 1.35;
+      letter-spacing: .03em;
+    }
+    .sidebar-card__title svg {
+      width: 12px;
+      height: 12px;
+      flex-shrink: 0;
+      color: #e0e0e0;
+    }
+    .sidebar-card p {
+      margin: 0 0 8px;
+      color: #999;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    .sidebar-card a {
+      color: #fff;
+      font-size: 11px;
       text-decoration: none;
-      transition: background .15s ease, color .15s ease, transform .15s ease;
     }
-    .github-star-link:hover,
-    .github-star-link:focus-visible {
-      background: var(--ink);
-      color: var(--paper);
-      transform: translateY(-1px);
+    .sidebar-card a:hover,
+    .sidebar-card a:focus-visible {
+      color: #fff;
+      text-decoration: underline;
     }
-    .github-star-link:active { transform: translateY(0); }
+    .sidebar-sponsor { text-align: center; }
+    .sidebar-sponsor__label {
+      display: block;
+      margin-bottom: 8px;
+      color: #777;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      font-size: 9px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .sidebar-sponsor__link { display: block; }
+    .sidebar-sponsor img {
+      display: block;
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 6px;
+      border-radius: 4px;
+    }
+    .sidebar-sponsor__name {
+      color: #ccc;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .toolbar {
+      display: flex;
+      width: 100%;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
     .theme-switcher {
       display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 8px;
+      flex-wrap: nowrap;
     }
     .theme-button {
       appearance: none;
       border: 1px solid color-mix(in srgb, var(--ink) 28%, transparent);
-      border-radius: 999px;
+      border-radius: 0;
       background: color-mix(in srgb, var(--paper) 74%, transparent);
       color: var(--ink);
       cursor: pointer;
       font: inherit;
       font-size: 12px;
-      padding: 8px 12px;
+      padding: 7px 12px;
+      margin-left: -1px;
+      transition: background .15s ease, color .15s ease;
+    }
+    .theme-button:first-child {
+      margin-left: 0;
+      border-radius: 6px 0 0 6px;
+    }
+    .theme-button:last-child {
+      border-radius: 0 6px 6px 0;
     }
     .theme-button[aria-pressed="true"] {
+      position: relative;
+      z-index: 1;
+      border-color: var(--ink);
       background: var(--ink);
       color: var(--paper);
     }
     .export-actions {
-      display: grid;
-      justify-items: center;
-      gap: 6px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     .export-button {
       appearance: none;
-      min-width: 168px;
-      border: 1px solid var(--ink);
-      border-radius: 999px;
-      background: var(--ink);
-      color: var(--paper);
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #222;
+      color: #fff;
       cursor: pointer;
       font: inherit;
-      font-size: 13px;
-      font-weight: 700;
-      padding: 10px 18px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 14px;
       transition: opacity .15s ease, transform .15s ease;
     }
-    .export-button:hover { transform: translateY(-1px); }
+    .export-button:hover { opacity: .85; transform: translateY(-1px); }
     .export-button:disabled { cursor: wait; opacity: .62; transform: none; }
     .export-status {
       min-height: 16px;
@@ -449,13 +515,16 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
     .transfer-heading { text-align: center; }
     .transfer-heading h2 { margin: 0; font-size: 18px; letter-spacing: .08em; }
     .transfer-heading p { margin: 7px 0 0; color: var(--muted); font-size: 11px; }
-    .qr-grid {
+    .transfer-layout {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+      align-items: start;
+      gap: 22px;
       margin-top: 20px;
     }
+    .qr-switcher { min-width: 0; }
     .qr-item { text-align: center; }
+    .qr-panel[hidden] { display: none; }
     .qr-frame {
       display: grid;
       place-items: center;
@@ -469,29 +538,67 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
     .qr-frame img { display: block; width: 100%; height: 100%; object-fit: contain; }
     .qr-item strong { display: block; font-size: 12px; }
     .qr-item span { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.45; }
-    .qr-grid--export-only { display: none; }
-    .multipart-live { margin-top: 20px; }
-    .multipart-panel {
-      display: grid;
-      place-items: center;
-      min-height: 310px;
+    .qr-frame--large { width: min(100%, 210px); }
+    .file-import-card {
       padding: 18px;
       border: 1px solid var(--line);
       background: color-mix(in srgb, var(--paper) 94%, var(--ink));
+    }
+    .file-import-card > strong { display: block; font-size: 14px; }
+    .file-import-card ol {
+      margin: 12px 0 16px;
+      padding-left: 20px;
+      color: var(--muted);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      font-size: 11px;
+      line-height: 1.65;
+    }
+    .download-file-button {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--ink);
+      border-radius: 999px;
+      background: var(--ink);
+      color: var(--paper);
+      cursor: pointer;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .download-file-button:hover { transform: translateY(-1px); }
+    .download-file-hint,
+    .download-status {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      font-size: 10px;
+      line-height: 1.45;
       text-align: center;
     }
-    .multipart-panel[hidden] { display: none; }
-    .multipart-setup__item { width: 100%; }
-    .qr-frame--large { width: min(100%, 250px); }
-    .multipart-stage__title,
-    .multipart-stage__part,
-    .multipart-stage__hint { display: block; }
-    .multipart-stage__title { margin-top: 4px; font-size: 14px; }
-    .multipart-stage__part { margin-top: 8px; font-size: 12px; font-weight: 800; letter-spacing: .06em; }
-    .multipart-stage__hint { max-width: 360px; margin-top: 6px; color: var(--muted); font-size: 10px; line-height: 1.5; }
-    #multipart-active-qr[aria-busy="true"] { visibility: hidden; }
-    .multipart-secondary {
-      margin-top: 14px;
+    .download-status { min-height: 14px; }
+    .download-status[data-state="success"] { color: #287a36; }
+    .download-status[data-state="error"] { color: #b33a2e; }
+    .file-import-card > p {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      font-size: 10px;
+      line-height: 1.55;
+      text-align: center;
+    }
+    .scan-alternative {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--line);
+      text-align: center;
+    }
+    .scan-alternative strong,
+    .scan-alternative span { display: block; }
+    .scan-alternative strong { font-size: 12px; }
+    .scan-alternative span { margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+    .secondary-button {
+      margin-top: 10px;
       padding: 7px 12px;
       border: 1px solid var(--line);
       border-radius: 999px;
@@ -501,7 +608,7 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
       font-size: 10px;
       cursor: pointer;
     }
-    .multipart-secondary:hover { background: color-mix(in srgb, var(--ink) 7%, transparent); }
+    .secondary-button:hover { background: color-mix(in srgb, var(--ink) 7%, transparent); }
     .mini-placeholder {
       display: grid;
       place-content: center;
@@ -539,20 +646,43 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
       line-height: 1.6;
       text-align: center;
     }
+    @media (max-width: 1020px) {
+      .layout {
+        grid-template-columns: 1fr;
+        max-width: 540px;
+        gap: 0;
+      }
+      .sidebar {
+        position: static;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 28px;
+      }
+      .sidebar-card {
+        flex: 1 1 160px;
+        min-width: 0;
+      }
+    }
     @media (max-width: 420px) {
-      .page { padding-inline: 10px; }
-      .github-star-link { justify-self: center; text-align: center; }
+      .layout { padding-inline: 10px; }
+      .toolbar {
+        flex-direction: column;
+        gap: 10px;
+      }
       .receipt { padding-inline: 20px; }
       .meta { grid-template-columns: 1fr; }
       .meta div:nth-child(even) { text-align: left; }
-      .qr-grid { grid-template-columns: 1fr; }
+      .transfer-layout { grid-template-columns: 1fr; }
+      .sidebar { flex-direction: column; }
+      .sidebar-card { flex-basis: auto; }
     }
   </style>
 </head>
 <body>
+  <div class="layout">
   <main class="page">
     <div class="toolbar">
-      <a class="github-star-link" href="${escapeHtml(githubStarPrompt.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(githubStarPrompt.label)}</a>
       <nav class="theme-switcher" aria-label="${escapeHtml(copy.themeAria)}">
         <button class="theme-button" type="button" data-theme-value="classic">${escapeHtml(copy.themes.classic)}</button>
         <button class="theme-button" type="button" data-theme-value="diner">${escapeHtml(copy.themes.diner)}</button>
@@ -615,10 +745,35 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
 
     <p class="privacy">${escapeHtml(copy.privacy)}</p>
   </main>
+  <aside class="sidebar" aria-label="${escapeHtml(copy.sidebar.aria)}">
+    <div class="sidebar-card">
+      <h3 class="sidebar-card__title">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>
+        ${escapeHtml(copy.sidebar.supportTitle)}
+      </h3>
+      <p>${escapeHtml(copy.sidebar.supportDescription)}</p>
+      <a class="github-star-link" href="${escapeHtml(githubStarPrompt.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(githubStarPrompt.label)}</a>
+    </div>
+    <div class="sidebar-card">
+      <h3 class="sidebar-card__title">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"/></svg>
+        ${escapeHtml(copy.sidebar.changelogTitle)}
+      </h3>
+      <a href="${escapeHtml(changelogUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(copy.sidebar.changelogLink)}</a>
+    </div>
+    <div class="sidebar-card sidebar-sponsor">
+      <span class="sidebar-sponsor__label">${escapeHtml(copy.sidebar.sponsorLabel)}</span>
+      <a class="sidebar-sponsor__link" href="${MODELFLARE_URL}" target="_blank" rel="noopener noreferrer">
+        <img src="${MODELFLARE_LOGO_DATA_URL}" alt="${escapeHtml(copy.sidebar.sponsorAlt)}" width="40" height="40">
+        <span class="sidebar-sponsor__name">ModelFlare<br>modelflare.dev</span>
+      </a>
+    </div>
+  </aside>
+  </div>
   <script>${inlineScript(DOM_TO_IMAGE_SOURCE)}</script>
   <script>
     const exportConfig = ${exportConfig};
-    const multipartConfig = ${multipartConfig};
+    const transferConfig = ${transferConfig};
     const themes = new Set(["classic", "diner", "payroll"]);
     const buttons = [...document.querySelectorAll("[data-theme-value]")];
     function applyTheme(theme) {
@@ -632,86 +787,44 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
     try { savedTheme = localStorage.getItem("codex-work-receipt-theme"); } catch {}
     applyTheme(savedTheme || document.documentElement.dataset.theme);
 
-    const multipartLive = document.getElementById("multipart-live");
-    if (multipartConfig.enabled && multipartLive) {
-      const setup = document.getElementById("multipart-setup");
-      const setupHint = document.getElementById("multipart-setup-hint");
-      const stage = document.getElementById("multipart-stage");
-      const activeQr = document.getElementById("multipart-active-qr");
-      const partLabel = document.getElementById("multipart-part-label");
-      const showMiniButton = document.getElementById("multipart-show-mini");
-      const urls = [...document.querySelectorAll(".qr-grid--export-only [data-data-qr-index] img")]
-        .map((image) => image.src)
-        .filter(Boolean);
-      let setupTimer = null;
-      let rotationTimer = null;
-      let switchTimer = null;
-      let activeIndex = 0;
-
-      function stopMultipartTimers() {
-        if (setupTimer !== null) clearInterval(setupTimer);
-        if (rotationTimer !== null) clearInterval(rotationTimer);
-        if (switchTimer !== null) clearTimeout(switchTimer);
-        setupTimer = null;
-        rotationTimer = null;
-        switchTimer = null;
-      }
-
-      function setupHintText(seconds) {
-        return String(multipartConfig.setupHint).replaceAll("{seconds}", String(seconds));
-      }
-
-      function partLabelText(index) {
-        return String(multipartConfig.partLabel)
-          .replaceAll("{current}", String(index + 1))
-          .replaceAll("{total}", String(urls.length));
-      }
-
-      function showPart(index, immediate = false) {
-        if (!urls.length) return;
-        activeIndex = (index + urls.length) % urls.length;
-        const applyPart = () => {
-          activeQr.src = urls[activeIndex];
-          activeQr.alt = partLabelText(activeIndex);
-          activeQr.setAttribute("aria-busy", "false");
-          partLabel.textContent = partLabelText(activeIndex);
-          switchTimer = null;
-        };
-        if (immediate) {
-          applyPart();
-          return;
+    const downloadFileButton = document.getElementById("download-import-file");
+    const downloadStatus = document.getElementById("download-status");
+    if (downloadFileButton && downloadStatus) {
+      downloadFileButton.addEventListener("click", () => {
+        try {
+          const blob = new Blob([transferConfig.content], { type: transferConfig.mimeType });
+          const objectUrl = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = objectUrl;
+          link.download = transferConfig.filename;
+          link.rel = "noopener";
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+          downloadStatus.textContent = transferConfig.successLabel;
+          downloadStatus.dataset.state = "success";
+        } catch (error) {
+          console.error(error);
+          downloadStatus.textContent = transferConfig.errorLabel;
+          downloadStatus.dataset.state = "error";
         }
-        activeQr.setAttribute("aria-busy", "true");
-        switchTimer = setTimeout(applyPart, multipartConfig.blankMs);
-      }
+      });
+    }
 
-      function startMultipartTransfer() {
-        stopMultipartTimers();
-        setup.hidden = true;
-        stage.hidden = false;
-        showPart(0, true);
-        rotationTimer = setInterval(() => showPart(activeIndex + 1), multipartConfig.frameMs);
-      }
-
-      function showMultipartSetup() {
-        stopMultipartTimers();
-        stage.hidden = true;
-        setup.hidden = false;
-        let remaining = multipartConfig.setupSeconds;
-        setupHint.textContent = setupHintText(remaining);
-        setupTimer = setInterval(() => {
-          remaining -= 1;
-          if (remaining <= 0) {
-            startMultipartTransfer();
-            return;
-          }
-          setupHint.textContent = setupHintText(remaining);
-        }, 1000);
-      }
-
-      showMiniButton.addEventListener("click", showMultipartSetup);
-      window.addEventListener("beforeunload", stopMultipartTimers);
-      showMultipartSetup();
+    const miniProgramPanel = document.querySelector("[data-mini-program-panel]");
+    const dataQrPanel = document.querySelector("[data-data-qr-panel]");
+    const showDataQrButton = document.querySelector("[data-show-data-qr]");
+    const showMiniProgramButton = document.querySelector("[data-show-mini-program]");
+    if (miniProgramPanel && dataQrPanel && showDataQrButton && showMiniProgramButton) {
+      showDataQrButton.addEventListener("click", () => {
+        miniProgramPanel.hidden = true;
+        dataQrPanel.hidden = false;
+      });
+      showMiniProgramButton.addEventListener("click", () => {
+        dataQrPanel.hidden = true;
+        miniProgramPanel.hidden = false;
+      });
     }
 
     const exportButton = document.getElementById("save-receipt-image");
@@ -734,30 +847,39 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
     }
 
     function sanitizeExportNode(node) {
-      const multipartLiveNode = node.querySelector(".multipart-live");
-      if (multipartLiveNode) multipartLiveNode.remove();
-
-      const exportGridNode = node.querySelector(".qr-grid--export-only");
-      if (exportGridNode) {
-        exportGridNode.removeAttribute("hidden");
-        exportGridNode.style.display = "grid";
+      const fileImportControls = node.querySelector("[data-file-import-controls]");
+      if (fileImportControls) fileImportControls.remove();
+      const dataQr = node.querySelector("[data-data-qr-panel]");
+      if (dataQr) dataQr.remove();
+      const miniProgram = node.querySelector("[data-mini-program-panel]");
+      if (miniProgram) miniProgram.hidden = false;
+      const transferLayout = node.querySelector(".transfer-layout");
+      if (transferLayout) {
+        transferLayout.style.gridTemplateColumns = "minmax(0, 1fr)";
+        transferLayout.style.justifyItems = "center";
       }
-
-      node.querySelectorAll("[data-data-qr-index]").forEach((item) => item.remove());
-      node.querySelectorAll(".qr-grid").forEach((grid) => {
-        grid.style.gridTemplateColumns = "minmax(0, 1fr)";
-        grid.style.justifyItems = "center";
-      });
 
       const miniProgramLabel = node.querySelector("[data-export-mini-label]");
       if (miniProgramLabel) miniProgramLabel.textContent = exportConfig.miniProgramLabel;
       const transferDescription = node.querySelector(".transfer-heading p");
       if (transferDescription) transferDescription.remove();
-      const transferNote = node.querySelector(".transfer-note");
-      if (transferNote) transferNote.remove();
+      node.querySelectorAll(".transfer-note").forEach((note) => note.remove());
 
       node.querySelectorAll(".paper").forEach((paper) => {
         paper.style.boxShadow = "none";
+      });
+    }
+
+    function normalizeExportTextLayout(node) {
+      const selectors = ".meta > div, .receipt-row > span, .receipt-row > strong, .salary-line > span, .salary-line > strong";
+      node.querySelectorAll(selectors).forEach((item) => {
+        ["width", "height", "inline-size", "block-size"].forEach((property) => {
+          item.style.removeProperty(property);
+        });
+      });
+      node.querySelectorAll(".receipt-row > strong, .salary-line > strong").forEach((value) => {
+        value.style.setProperty("white-space", "nowrap");
+        value.style.setProperty("flex-shrink", "0");
       });
     }
 
@@ -813,6 +935,7 @@ export function renderHtml({ record, dataQrDataUrl = null, dataQrDataUrls = null
           style: { background: paperColor },
           onclone(clone) {
             sanitizeExportNode(clone);
+            normalizeExportTextLayout(clone);
             clone.style.position = "static";
             clone.style.left = "auto";
             clone.style.top = "auto";

@@ -1,0 +1,33 @@
+{
+  "format": "codex-work-receipt",
+  "file_version": 1,
+  "payload_schema": "cwr1",
+  "payload": {
+    "v": 1,
+    "i": "cwr_fixture",
+    "g": "2026-07-22T00:00:00.000Z",
+    "o": "latest",
+    "d": [
+      "2026-07-22T00:00:00.000Z",
+      "2026-07-22T01:00:00.000Z",
+      "Asia/Shanghai",
+      "2026-07-22",
+      "2026-07-22"
+    ],
+    "s": [1, 2, 2, 3, 0, 60000, 1200],
+    "t": [100, 80, 20, 10, 120],
+    "m": ["test-model"],
+    "l": "zh-CN",
+    "r": null,
+    "p": [
+      "classic",
+      "测试工种",
+      "测试点评",
+      ["本单工资", 12, "AI 工分", "测试数据", "work_points_v1"]
+    ]
+  },
+  "integrity": {
+    "algorithm": "sha256",
+    "digest": "08fc2306dfc6c6520c9889b0a40db24bb340c7cc7b8d1637f06436a4c925879c"
+  }
+}

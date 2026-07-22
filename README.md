@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>把本机 Codex 的工作记录，开成一张可以带走的 AI 打工小票。</strong><br>
-  一行命令 · 完全本地 · Codex 桌宠 · 三种主题 · 扫码传到手机
+  一行命令 · 完全本地 · Codex 桌宠 · 三种主题 · 微信聊天文件导入
 </p>
 
 <p align="center">
@@ -22,7 +22,7 @@
 
 它会统计 Codex 会话中的轮次、工具调用、Token、时长和模型，生成带有 AI 工分、今日工种和点评的小票。不会把 Prompt、回复正文、代码、项目路径或文件名写入小票。
 
-`0.6.0` 使用 cwr2 协议，按“会话 × 自然日”生成稳定的脱敏事实。今日、近 7 日和本周小票即使范围重叠，接收端也能识别相同工作；数据过大时会自动生成多张可重组的分片二维码，并在 HTML 中逐张自动轮播，避免镜头同时识别多个数据码。
+cwr2 协议按“会话 × 自然日”生成稳定的脱敏事实。今日、近 7 日和本周小票即使范围重叠，接收端也能识别相同工作。每张小票还会生成一个 `.cwr.json` 微信导入文件；只有完整数据能放进一个二维码时，网页才额外提供扫码导入。
 
 ## 认识票仔
 
@@ -36,7 +36,7 @@
 
 ## Quickstart
 
-需要 Node.js 20 或更高版本，并且本机已经使用过 Codex。无需克隆仓库，运行后选择“今天 / 最近 3 小时 / 近 7 日 / 本周 / 指定会话”：
+需要 Node.js 20 或更高版本，并且本机已经使用过 Codex。无需克隆仓库。首次交互式运行会先让你选择“自动保存”或“仅手动”；选择手动后，再选择“今天 / 最近 3 小时 / 近 7 日 / 本周 / 指定会话”：
 
 ```bash
 npx codex-work-receipt@latest
@@ -56,7 +56,27 @@ npx codex-work-receipt@latest --hours 3
 
 “最近 N 小时”是滚动摘要，只用于查看和保存私人历史，不参与 AI 供销社的去重统计。需要进入供销社时，请生成“今日 / 本周 / 近 7 日 / 指定会话”小票。
 
-网页和结构数据默认保存在 `./codex-work-receipt-output/`。生成的网页支持一键保存只包含完整小票和微信小程序码的高清长图，数据二维码不会进入图片。也可以继续使用 `--latest`、`--today` 等非交互参数，详见 [CLI 使用文档](docs/cli.md)。
+网页、结构数据和微信导入文件默认保存在 `./codex-work-receipt-output/`。生成的网页支持一键下载 `.cwr.json`，也可以保存只包含完整小票和微信小程序码的高清长图。数据二维码不会进入图片。详见 [CLI 使用文档](docs/cli.md)。
+
+## 自动保存或仅手动
+
+自动保存使用 Codex 的 `Stop` Hook：每当 Codex 完成一轮工作，就在本机静默刷新当天同一张 HTML、完整 JSON 和 `.cwr.json` 微信导入文件。它不会打开浏览器、不会上传文件，也不会常驻监听进程。自动路径以微信文件导入为主，不生成数据二维码。
+
+重新选择模式：
+
+```bash
+npx codex-work-receipt@latest --setup
+```
+
+也可以直接启用、关闭或检查自动保存：
+
+```bash
+npx codex-work-receipt@latest --enable-auto
+npx codex-work-receipt@latest --disable-auto
+npx codex-work-receipt@latest --auto-status
+```
+
+自动小票统一保存在 `~/.codex-work-receipt/auto/YYYY-MM-DD/`。切换为仅手动只会移除 AI 打工小票自己的 Hook，不会删除历史小票或其他 Codex Hook。安装 Hook 后请重启 Codex；如果 Codex 提示审查新 Hook，请使用 `/hooks` 确认并信任。Codex Hook 机制见 [官方文档](https://learn.chatgpt.com/docs/hooks)。
 
 ## 直接跟 Codex 说
 
@@ -86,15 +106,15 @@ Codex 会选择统计范围和主题、执行命令并打开小票。详见 [Cod
 
 ## 从电脑到手机
 
-桌面网页会生成一张或多张脱敏数据二维码。配套微信小程序支持分片扫码、私人历史、主题切换和保存图片。详见 [手机扫码导入](docs/mobile-import.md)。
+桌面网页会生成一个脱敏 `.cwr.json` 文件。把它发送到微信文件传输助手后，可在配套小程序中通过“从聊天文件导入”选择；数据足够小时也可以使用唯一的数据二维码快速导入。详见 [手机导入](docs/mobile-import.md)。
 
 ## 文档
 
 - [CLI 使用与全部参数](docs/cli.md)
 - [Codex Skill](docs/codex-skill.md)
 - [Codex 桌宠“票仔”](docs/codex-pet.md)
-- [手机扫码导入](docs/mobile-import.md)
-- [数据结构与二维码协议](docs/data-schema.md)
+- [手机文件与单码导入](docs/mobile-import.md)
+- [数据结构、文件与二维码协议](docs/data-schema.md)
 - [本地数据与隐私说明](docs/privacy.md)
 - [参与贡献](CONTRIBUTING.md) · [安全说明](SECURITY.md) · [更新日志](CHANGELOG.md)
 

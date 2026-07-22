@@ -14,6 +14,8 @@ import {
   DEFAULT_LOCALE,
   getWorkProfileCopy,
 } from "./presentation.mjs";
+import { createReceiptFile } from "./file-payload.mjs";
+import { writeFileAtomicSync, writeWithAtomicFileSync } from "../lib/files.mjs";
 
 const SCHEMA_VERSION = 2;
 const SOURCE_VERSION = "cwr2";
@@ -127,7 +129,13 @@ export function buildReceiptRecord(metrics, defaultTheme = "classic", locale = D
   return record;
 }
 
-export function persistReceiptRecord(record, outputHtmlPath, requestedDataDir = null) {
+export function transferFilePathForOutput(outputHtmlPath) {
+  return /\.html?$/i.test(outputHtmlPath)
+    ? outputHtmlPath.replace(/\.html?$/i, ".cwr.json")
+    : `${outputHtmlPath}.cwr.json`;
+}
+
+export function persistReceiptRecord(record, outputHtmlPath, requestedDataDir = null, requestedTransferFile = null) {
   const dataDir = path.resolve(
     requestedDataDir || process.env.CODEX_WORK_RECEIPT_HOME || path.join(os.homedir(), ".codex-work-receipt"),
   );
@@ -135,8 +143,8 @@ export function persistReceiptRecord(record, outputHtmlPath, requestedDataDir = 
   fs.mkdirSync(receiptsDir, { recursive: true });
 
   const receiptPath = path.join(receiptsDir, `${record.id}.json`);
-  fs.writeFileSync(receiptPath, `${JSON.stringify(record, null, 2)}\n`, "utf8");
-  fs.writeFileSync(path.join(dataDir, "latest.json"), `${JSON.stringify(record, null, 2)}\n`, "utf8");
+  writeFileAtomicSync(receiptPath, `${JSON.stringify(record, null, 2)}\n`);
+  writeFileAtomicSync(path.join(dataDir, "latest.json"), `${JSON.stringify(record, null, 2)}\n`);
 
   const allRecords = fs.readdirSync(receiptsDir)
     .filter((name) => name.endsWith(".json"))
@@ -156,16 +164,16 @@ export function persistReceiptRecord(record, outputHtmlPath, requestedDataDir = 
   const history = [...deduplicated.values()]
     .sort((left, right) => String(left.period?.end_at).localeCompare(String(right.period?.end_at)));
   const historyPath = path.join(dataDir, "history.jsonl");
-  const historyDescriptor = fs.openSync(historyPath, "w");
-  try {
+  writeWithAtomicFileSync(historyPath, (historyDescriptor) => {
     for (const item of history) fs.writeSync(historyDescriptor, `${JSON.stringify(item)}\n`, null, "utf8");
-  } finally {
-    fs.closeSync(historyDescriptor);
-  }
+  });
 
   const companionPath = /\.html?$/i.test(outputHtmlPath)
     ? outputHtmlPath.replace(/\.html?$/i, ".json")
     : `${outputHtmlPath}.json`;
-  fs.writeFileSync(companionPath, `${JSON.stringify(record, null, 2)}\n`, "utf8");
-  return { dataDir, receiptPath, companionPath };
+  writeFileAtomicSync(companionPath, `${JSON.stringify(record, null, 2)}\n`);
+  const transferFile = requestedTransferFile || createReceiptFile(record);
+  const transferPath = transferFilePathForOutput(outputHtmlPath);
+  writeFileAtomicSync(transferPath, transferFile.content);
+  return { dataDir, receiptPath, companionPath, transferPath };
 }

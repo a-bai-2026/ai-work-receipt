@@ -9,7 +9,7 @@
 
 No clone or global installation is required.
 
-## Interactive range selector
+## Interactive mode and range selector
 
 Run:
 
@@ -17,7 +17,43 @@ Run:
 npx codex-work-receipt@latest --lang en
 ```
 
-Choose all activity today, the last 3 hours, the last 7 calendar days, this week, or a specific recent session. Session choices include their time range, turns, tool calls, and model for identification.
+The first interactive run asks you to choose:
+
+- `Automatic saving`: quietly refresh today's receipt and `.cwr.json` WeChat import file whenever a Codex turn stops
+- `Manual only`: generate only when you run the command or ask Ticket Buddy
+
+After choosing manual-only mode, choose all activity today, the last 3 hours, the last 7 calendar days, this week, or a specific recent session. Session choices include their time range, turns, tool calls, and model for identification. Explicit range flags such as `--today` and `--latest` never trigger mode setup.
+
+## Automatic saving
+
+Open the mode selector again:
+
+```bash
+npx codex-work-receipt@latest --setup --lang en
+```
+
+Enable, switch to manual-only mode, or inspect status directly:
+
+```bash
+npx codex-work-receipt@latest --enable-auto --lang en
+npx codex-work-receipt@latest --disable-auto --lang en
+npx codex-work-receipt@latest --auto-status --lang en
+```
+
+Automatic saving uses a user-level Codex `Stop` hook. When a turn stops, the hook launches one short-lived local generation process. It does not use a timer, idle detection, or a persistent watcher. Nearby triggers are coalesced, and a local lock protects concurrent generation.
+
+Automatic mode refreshes only the today range. It does not open a browser, print routine prompts, or generate a data QR. Each refresh updates:
+
+```text
+~/.codex-work-receipt/auto/YYYY-MM-DD/
+├── codex-receipt-today-YYYY-MM-DD.html
+├── codex-receipt-today-YYYY-MM-DD.json
+└── codex-receipt-today-YYYY-MM-DD.cwr.json
+```
+
+The `.cwr.json` file is the mobile import path for automatic receipts. Send it to WeChat File Transfer, then choose “Import from chat file” in the mini program. Automatic saving never sends or uploads the file itself.
+
+Enabling automatic saving installs a stable offline runtime under `~/.codex-work-receipt/runtime/` and safely merges `~/.codex/hooks.json`. Existing hook configuration is backed up first. If the current file cannot be parsed, setup stops instead of replacing it. Restart Codex and use `/hooks` to inspect and trust the hook if prompted. Manual-only mode removes only this tool's hook while preserving history, the local runtime, and unrelated hooks. After upgrading the npm package, run `--enable-auto` again to refresh the local runtime; repeated setup does not duplicate the hook.
 
 ## Non-interactive ranges
 
@@ -82,12 +118,17 @@ Default output:
 ```text
 ./codex-work-receipt-output/
 ├── codex-receipt-today-2026-07-18.html
-└── codex-receipt-today-2026-07-18.json
+├── codex-receipt-today-2026-07-18.json
+└── codex-receipt-today-2026-07-18.cwr.json
 ```
 
 Default filenames include the calendar range. Latest-session and selected-session receipts include a short identifier so receipts from different dates or sessions do not overwrite one another.
 
-Open the generated HTML and click “Save full PNG” to download a high-resolution image. It contains only the complete main receipt and WeChat mini-program code in the currently selected theme. Data QR codes, multipart data codes, theme controls, the page background, and the footer note are excluded. The HTML page still presents data codes normally: a single code stays beside the mini-program code, while oversized cwr2 payloads rotate their parts after the mini program has been opened so they can be imported on the phone.
+In the generated HTML:
+
+- “Download WeChat import file” downloads the same `.cwr.json` file. Send it to WeChat File Transfer, then choose “Import from chat file” in the mini program.
+- “Or import by scanning” appears only when the complete payload safely fits in one data QR code. The desktop no longer generates multipart QR codes.
+- “Save full PNG” downloads a high-resolution image containing only the complete receipt and WeChat mini-program code. File controls, data QR codes, theme controls, the page background, and footer notes are excluded.
 
 Set a timezone and output path:
 
@@ -121,6 +162,10 @@ npx codex-work-receipt@latest --latest --lang en --no-open
 | `--install-pet` | Install only the Ticket Buddy Codex pet |
 | `--uninstall-pet` | Remove Ticket Buddy without deleting the skill or receipts |
 | `--install-companion` | Install both the skill and Ticket Buddy Codex pet |
+| `--setup` | Interactively choose automatic saving or manual-only mode |
+| `--enable-auto` | Install the local runtime and Codex hook, then enable automatic saving |
+| `--disable-auto` | Remove this tool's hook and switch to manual-only mode |
+| `--auto-status` | Show the mode, runtime, hook, and latest automatic-run status |
 | `--no-open` | Do not open the generated page |
 
 Run the built-in help at any time:
@@ -135,11 +180,15 @@ Each run creates or updates:
 
 - `codex-work-receipt-output/codex-receipt-*.html`: theme-switchable receipt page
 - `codex-work-receipt-output/codex-receipt-*.json`: versioned receipt data
+- `codex-work-receipt-output/codex-receipt-*.cwr.json`: privacy-safe file to send through WeChat and select in the mini program
 - `~/.codex-work-receipt/receipts/*.json`: local snapshots
 - `~/.codex-work-receipt/latest.json`: latest receipt
 - `~/.codex-work-receipt/history.jsonl`: deduplicated local history
+- `~/.codex-work-receipt/config.json`: automatic or manual-only configuration
+- `~/.codex-work-receipt/auto-state.json`: latest automatic-run status
+- `~/.codex-work-receipt/auto/YYYY-MM-DD/`: automatically refreshed daily HTML, JSON, and WeChat import file
 
-See the [data schema and QR protocol](data-schema.en.md).
+See the [data schema, file, and QR protocol](data-schema.en.md).
 
 ## Current limitations
 
@@ -147,3 +196,4 @@ See the [data schema and QR protocol](data-schema.en.md).
 - Changed-file and line counts are intentionally omitted until they can be measured consistently
 - Calendar ranges filter events by local date, rolling-hour ranges use exact timestamps, and both calculate per-session Token deltas
 - Desktop PNG export is rendered locally in the browser and does not upload receipt data
+- Automatic saving depends on a local Codex client firing the `Stop` hook; cloud tasks do not directly invoke the local hook

@@ -9,7 +9,7 @@
 
 无需克隆仓库或全局安装。
 
-## 交互选择统计范围
+## 交互选择保存方式与统计范围
 
 直接运行：
 
@@ -17,7 +17,43 @@
 npx codex-work-receipt@latest
 ```
 
-命令行会让你选择：今天全部活动、最近 3 小时、最近 7 个自然日、本周，或最近的某个具体会话。选择具体会话时会展示起止时间、轮次、工具调用和模型，帮助辨认。
+首次交互式运行会先让你选择：
+
+- `自动保存`：Codex 每完成一轮工作，就静默刷新今天的小票和 `.cwr.json` 微信导入文件
+- `仅手动`：只有执行命令或告诉票仔时才生成
+
+选择仅手动后，命令行会继续让你选择今天全部活动、最近 3 小时、最近 7 个自然日、本周，或最近的某个具体会话。选择具体会话时会展示起止时间、轮次、工具调用和模型，帮助辨认。显式使用 `--today`、`--latest` 等范围参数时不会触发模式问答。
+
+## 自动保存
+
+重新打开模式选择：
+
+```bash
+npx codex-work-receipt@latest --setup
+```
+
+直接启用、切换为仅手动或查看状态：
+
+```bash
+npx codex-work-receipt@latest --enable-auto
+npx codex-work-receipt@latest --disable-auto
+npx codex-work-receipt@latest --auto-status
+```
+
+自动保存通过用户级 Codex `Stop` Hook 触发。Hook 收到一轮工作停止事件后只启动一个短生命周期的本地生成进程；没有定时器、空闲判断或常驻监听服务。短时间内的重复触发会被合并，并发生成使用本地锁保护。
+
+自动模式只刷新“今日”范围，并且不打开浏览器、不打印日常提示、不生成数据二维码。每次刷新都会更新同一天的以下文件：
+
+```text
+~/.codex-work-receipt/auto/YYYY-MM-DD/
+├── codex-receipt-today-YYYY-MM-DD.html
+├── codex-receipt-today-YYYY-MM-DD.json
+└── codex-receipt-today-YYYY-MM-DD.cwr.json
+```
+
+`.cwr.json` 是自动模式的手机导入入口：把它发送到微信文件传输助手，再在小程序中选择“从聊天文件导入”。自动保存不会自动发送文件或上传数据。
+
+启用时会把不依赖网络的稳定运行器安装到 `~/.codex-work-receipt/runtime/`，并安全合并 `~/.codex/hooks.json`。如果已有 Hooks，原文件会先备份；无法解析现有配置时安装会停止，不会覆盖它。重启 Codex 后，如果出现 Hook 审查提示，请使用 `/hooks` 检查并信任。切换为仅手动只移除本工具自己的 Hook，保留历史、运行器和其他 Hooks。npm 包升级后重新执行 `--enable-auto` 即可更新本地运行器；重复执行不会重复添加 Hook。
 
 ## 非交互统计范围
 
@@ -82,12 +118,17 @@ npx codex-work-receipt@latest --latest --theme diner
 ```text
 ./codex-work-receipt-output/
 ├── codex-receipt-today-2026-07-18.html
-└── codex-receipt-today-2026-07-18.json
+├── codex-receipt-today-2026-07-18.json
+└── codex-receipt-today-2026-07-18.cwr.json
 ```
 
 默认文件名会携带统计日期范围；最近会话和指定会话则携带短编号，避免不同日期或会话的小票互相覆盖。
 
-打开生成的 HTML 后，点击“保存完整长图”即可下载高清 PNG。图片只包含完整主小票和微信小程序码，并自动使用当前选择的主题；数据二维码、分片数据码、主题按钮、网页背景和底部说明都不会进入图片。网页本身仍会正常展示数据二维码：单码时与小程序码并排，cwr2 超出单码安全容量时则在打开小程序后自动逐张轮播分片数据码，供用户在小程序中完成导入。
+打开生成的 HTML 后：
+
+- 点击“下载微信导入文件”会下载同一份 `.cwr.json`。把它发送到微信文件传输助手，再在小程序中点击“从聊天文件导入”。
+- 只有完整数据能安全放进一个二维码时，页面才显示“也可以扫码导入”；桌面端不会再生成多分片二维码。
+- 点击“保存完整长图”会下载高清 PNG。图片只包含完整主小票和微信小程序码，不包含导入文件按钮、数据二维码、主题按钮、网页背景或底部说明。
 
 指定时区和输出路径：
 
@@ -121,6 +162,10 @@ npx codex-work-receipt@latest --latest --no-open
 | `--install-pet` | 只安装“票仔”Codex 桌宠 |
 | `--uninstall-pet` | 卸载“票仔”，不删除 Skill 或历史小票 |
 | `--install-companion` | 同时安装 Skill 和“票仔”Codex 桌宠 |
+| `--setup` | 交互选择自动保存或仅手动模式 |
+| `--enable-auto` | 安装运行器和 Codex Hook，启用自动保存 |
+| `--disable-auto` | 移除本工具 Hook，切换为仅手动模式 |
+| `--auto-status` | 查看模式、运行器、Hook 和最近自动生成状态 |
 | `--no-open` | 生成后不自动打开浏览器 |
 
 也可以随时运行：
@@ -135,11 +180,15 @@ npx codex-work-receipt@latest --help
 
 - `codex-work-receipt-output/codex-receipt-*.html`：可切换主题的小票网页
 - `codex-work-receipt-output/codex-receipt-*.json`：当前小票的版本化结构数据
+- `codex-work-receipt-output/codex-receipt-*.cwr.json`：发送到微信聊天后由小程序选择的脱敏导入文件
 - `~/.codex-work-receipt/receipts/*.json`：本机历史快照
 - `~/.codex-work-receipt/latest.json`：最近生成的小票
 - `~/.codex-work-receipt/history.jsonl`：去重后的本地历史
+- `~/.codex-work-receipt/config.json`：自动保存或仅手动配置
+- `~/.codex-work-receipt/auto-state.json`：最近一次自动运行状态
+- `~/.codex-work-receipt/auto/YYYY-MM-DD/`：自动刷新的今日 HTML、JSON 和微信导入文件
 
-结构说明见 [数据结构与二维码协议](data-schema.md)。
+结构说明见 [数据结构、文件与二维码协议](data-schema.md)。
 
 ## 当前限制
 
@@ -147,3 +196,4 @@ npx codex-work-receipt@latest --help
 - 暂不统计修改文件数和代码行数，避免不同工具调用方式产生误导
 - 自然日范围按本地日期筛选，滚动小时范围按精确时间戳筛选，并分别计算每个会话的 Token 区间增量
 - 桌面网页导出 PNG 使用浏览器本地渲染，不上传小票数据
+- 自动保存依赖本机 Codex 客户端触发 `Stop` Hook；云端任务不会直接调用本机 Hook

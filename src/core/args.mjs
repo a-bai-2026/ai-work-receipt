@@ -13,6 +13,7 @@ Usage:
   npx codex-work-receipt@latest --range this-week --lang en
   npx codex-work-receipt@latest --install-skill --lang en
   npx codex-work-receipt@latest --install-companion --lang en
+  npx codex-work-receipt@latest --setup --lang en
 
 Options:
   --range <name>              Range: latest, last-hours, today, last-7-days, this-week
@@ -29,6 +30,10 @@ Options:
   --install-pet               Install the Codex pet only
   --uninstall-pet             Remove the installed Codex pet
   --install-companion         Install both the skill and Codex pet
+  --setup                     Choose automatic saving or manual-only mode
+  --enable-auto               Enable automatic daily receipt saving
+  --disable-auto              Switch to manual-only mode
+  --auto-status               Show automatic saving status
   --no-open                   Do not open the browser after generation
   --help                      Show help
 ` : `
@@ -43,6 +48,7 @@ Codex AI 打工小票
   npx codex-work-receipt@latest --range this-week
   npx codex-work-receipt@latest --install-skill
   npx codex-work-receipt@latest --install-companion
+  npx codex-work-receipt@latest --setup
 
 选项：
   --range <name>              统计范围：latest、last-hours、today、last-7-days、this-week
@@ -59,6 +65,10 @@ Codex AI 打工小票
   --install-pet               只安装 Codex 桌宠
   --uninstall-pet             卸载 AI 打工小票 Codex 桌宠
   --install-companion         同时安装 Skill 和 Codex 桌宠
+  --setup                     选择自动保存或仅手动模式
+  --enable-auto               启用自动保存今日小票
+  --disable-auto              切换为仅手动模式
+  --auto-status               查看自动保存状态
   --no-open                   生成后不自动打开浏览器
   --help                      显示帮助
 `);
@@ -79,6 +89,10 @@ export function parseArgs(argv) {
     installPet: false,
     uninstallPet: false,
     installCompanion: false,
+    setup: false,
+    enableAuto: false,
+    disableAuto: false,
+    autoStatus: false,
     open: true,
   };
 
@@ -111,6 +125,10 @@ export function parseArgs(argv) {
       result.mode = scope;
       result.modeExplicit = true;
     } else if (argument === "--install-skill") result.installSkill = true;
+    else if (argument === "--setup") result.setup = true;
+    else if (argument === "--enable-auto") result.enableAuto = true;
+    else if (argument === "--disable-auto") result.disableAuto = true;
+    else if (argument === "--auto-status") result.autoStatus = true;
     else if (argument === "--no-open") result.open = false;
     else if (argument === "--help" || argument === "-h") result.help = true;
     else if (optionsWithValues.has(argument)) {
@@ -134,6 +152,11 @@ export function parseArgs(argv) {
   if (!new Set(["zh-CN", "en"]).has(result.locale)) {
     throw new Error(`不支持的语言：${result.locale}`);
   }
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: result.timezone }).format(new Date());
+  } catch {
+    throw new Error(`不支持的时区：${result.timezone}`);
+  }
   if (result.hours !== null) {
     result.hours = Number(result.hours);
     if (!Number.isInteger(result.hours) || result.hours < 1 || result.hours > 168) {
@@ -141,5 +164,16 @@ export function parseArgs(argv) {
     }
   }
   if (result.mode === "last-hours" && result.hours === null) result.hours = 3;
+  const managementActions = [
+    result.setup,
+    result.enableAuto,
+    result.disableAuto,
+    result.autoStatus,
+  ].filter(Boolean).length;
+  if (managementActions > 1) throw new Error("自动保存管理参数不能同时使用");
+  if (managementActions && result.modeExplicit) throw new Error("自动保存管理参数不能与统计范围参数同时使用");
+  if (managementActions && (
+    result.installSkill || result.installPet || result.uninstallPet || result.installCompanion
+  )) throw new Error("自动保存管理参数不能与 Skill 或桌宠管理参数同时使用");
   return result;
 }

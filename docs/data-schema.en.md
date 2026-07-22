@@ -1,8 +1,8 @@
-# Data schema and QR protocol
+# Data schema, file, and QR protocol
 
 <p><a href="./data-schema.md">中文</a> · <strong>English</strong> · <a href="../README.en.md">Back to README</a></p>
 
-The current schema version is `1`. Each generation saves a structured receipt record locally.
+The full receipt schema is currently version `2`; rolling-hour summaries remain on compatible version `1`. Each run saves both the full local record and a privacy-safe WeChat import file.
 
 ## Main fields
 
@@ -18,6 +18,29 @@ The current schema version is `1`. Each generation saves a structured receipt re
 
 The `id` remains stable for the same session, day, or calendar-boundary pair. Regeneration updates the record rather than creating duplicate history. `source.snapshot_hash` detects metric changes.
 
+## WeChat import file
+
+Each run writes a `*.cwr.json` file beside the HTML:
+
+```json
+{
+  "format": "codex-work-receipt",
+  "file_version": 1,
+  "payload_schema": "cwr2",
+  "payload": {},
+  "integrity": {
+    "algorithm": "sha256",
+    "digest": "..."
+  }
+}
+```
+
+`payload` is exactly the compact structure obtained after decoding a QR payload. `integrity.digest` is a full SHA-256 over canonical payload JSON. It detects corruption but is not a source signature. The mini program must treat every file as untrusted input, enforce a size limit, validate versions, fields, numeric bounds, unique fact IDs, manifests, and content hashes, then persist atomically only after confirmation.
+
+Canonicalization recursively sorts every object's keys using JavaScript's default string order (UTF-16 code units), preserves array order, uses JSON primitive types, and emits no whitespace or trailing newline. Calculate SHA-256 over the resulting UTF-8 bytes. Use the digest in `docs/fixtures/cwr-file-v1.json` to cross-check another implementation.
+
+A cross-repository compatibility fixture is available at `docs/fixtures/cwr-file-v1.json`.
+
 ## QR format
 
 The QR payload uses compact fields:
@@ -28,7 +51,9 @@ cwr2.<checksum>.<Base64URL of deflateRaw(JSON)>
 cwr2p.<transferId>.<partIndex>.<partCount>.<totalChecksum>.<partChecksum>.<chunk>
 ```
 
-`cwr1` and `cwr2` are complete single-code payloads. `cwr2p` splits the cwr2 string into up to 12 reorderable parts. The mini program collects a transfer by transferId, validates the total checksum, reconstructs cwr2, and only then decompresses it. Multipart HTML rotates one data code at a time; the protocol does not require scan order.
+`cwr1` and `cwr2` are complete single-code payloads. The desktop generates one data QR only when the complete payload stays within the safe QR version; otherwise it provides only the `.cwr.json` file and does not generate new multipart codes.
+
+`cwr2p` is the legacy reorderable cwr2 multipart format, limited to 12 parts. Updated mini programs should still collect historical parts by transferId, validate part and total checksums, reconstruct cwr2, and decompress it so existing receipts remain importable.
 
 The mini program validates the prefix and checksum before decompressing and parsing the payload. Future schema versions use the compact `v` field for compatibility.
 
@@ -38,4 +63,4 @@ When the same Codex session has multiple append-only log revisions, the generato
 
 `presentation.compensation` contains playful AI work points, not real API cost. For compatibility with the current Chinese mini program, QR display copy remains Chinese while compact fields `l` and `r` carry the desktop locale and language-neutral role ID. English HTML and local JSON remain fully localized.
 
-See [mobile QR import](mobile-import.en.md).
+See [mobile file and single-QR import](mobile-import.en.md).

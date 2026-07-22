@@ -6,6 +6,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { decodeReceiptFile } from "../src/core/file-payload.mjs";
 import {
   getHtmlStarPrompt,
   getOpenSourcePrompt,
@@ -68,6 +69,36 @@ function writeSession(codexHome) {
   fs.writeFileSync(sessionPath, `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`, "utf8");
 }
 
+function writeManySessions(codexHome, count) {
+  const timestamp = new Date().toISOString();
+  for (let index = 0; index < count; index += 1) {
+    const sessionPath = path.join(codexHome, "sessions", `rollout-file-import-${index}.jsonl`);
+    const rows = [
+      { timestamp, type: "session_meta", payload: { id: `file-import-session-${index}` } },
+      { timestamp, type: "turn_context", payload: { model: "gpt-test" } },
+      { timestamp, type: "event_msg", payload: { type: "user_message" } },
+      { timestamp, type: "event_msg", payload: { type: "task_complete", duration_ms: 1_000 } },
+      {
+        timestamp,
+        type: "event_msg",
+        payload: {
+          type: "token_count",
+          info: {
+            total_token_usage: {
+              input_tokens: 80 + index,
+              cached_input_tokens: 50,
+              output_tokens: 20,
+              reasoning_output_tokens: 10,
+              total_tokens: 100 + index,
+            },
+          },
+        },
+      },
+    ];
+    fs.writeFileSync(sessionPath, `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`, "utf8");
+  }
+}
+
 test("开源引导为小票和票仔提供独立的中英文文案", () => {
   const receiptZh = getOpenSourcePrompt("receipt", "zh-CN");
   const petZh = getOpenSourcePrompt("pet", "zh-CN");
@@ -119,6 +150,46 @@ test("小票生成成功后只输出一次项目地址和 Star 引导", () => {
 
   assert.equal(countOccurrences(output, OPEN_SOURCE_REPOSITORY_URL), 1);
   assert.match(output, /如果你也喜欢这个 AI 小票工具/);
+  assert.match(output, /微信导入文件：.*receipt\.cwr\.json/);
+  const transferPath = path.join(fixture.tempDir, "receipt.cwr.json");
+  assert.equal(fs.existsSync(transferPath), true);
+  assert.equal(decodeReceiptFile(fs.readFileSync(transferPath, "utf8")).v, 2);
+  assert.match(fs.readFileSync(path.join(fixture.tempDir, "receipt.html"), "utf8"), /下载微信导入文件/);
+});
+
+test("超过单个二维码容量时 CLI 仍完整输出文件导入流程", () => {
+  const fixture = createCliEnvironment();
+  writeManySessions(fixture.codexHome, 80);
+  const outputPath = path.join(fixture.tempDir, "oversized.html");
+  const output = execFileSync(process.execPath, [
+    CLI_PATH,
+    "--today",
+    "--no-open",
+    "--output",
+    outputPath,
+    "--data-dir",
+    path.join(fixture.tempDir, "data"),
+  ], {
+    cwd: fixture.tempDir,
+    env: {
+      ...fixture.environment,
+      CODEX_WORK_RECEIPT_FULL_SCAN: "1",
+    },
+    encoding: "utf8",
+  });
+
+  const transferPath = path.join(fixture.tempDir, "oversized.cwr.json");
+  const companionPath = path.join(fixture.tempDir, "oversized.json");
+  const html = fs.readFileSync(outputPath, "utf8");
+  const payload = decodeReceiptFile(fs.readFileSync(transferPath, "utf8"));
+
+  assert.equal(fs.existsSync(outputPath), true);
+  assert.equal(fs.existsSync(companionPath), true);
+  assert.equal(payload.f.length, 80);
+  assert.match(output, /数据超过单码容量，已改用微信聊天文件导入/);
+  assert.match(html, /下载微信导入文件/);
+  assert.doesNotMatch(html, /data-data-qr-panel hidden/);
+  assert.doesNotMatch(html, /也可以扫码导入/);
 });
 
 test("单独安装票仔和安装 Companion 都只输出一次票仔 Star 引导", () => {

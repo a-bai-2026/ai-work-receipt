@@ -4,6 +4,8 @@
 
 AI 打工小票内置了一个 Codex Skill，让 Codex 可以根据自然语言替你选择参数并运行 CLI。
 
+Skill 属于手动开票入口，与保存模式互不冲突：自动保存开启后仍然可以让 Codex 生成最近会话、本周等其他范围；仅手动模式则不会影响 Skill 的正常使用。自动保存模式通过 `npx codex-work-receipt@latest --setup` 配置，详见 [CLI 使用](cli.md#自动保存)。
+
 ## 安装
 
 ```bash

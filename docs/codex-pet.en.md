@@ -4,7 +4,7 @@
 
 “Ticket Buddy · AI Work Receipt” is a custom companion for Codex's native Pets feature. It is a night-green thermal receipt printer with tiny ox horns and animated idle, working, waiting, ready, failed, and review states.
 
-Ticket Buddy only presents Codex activity and provides companionship. It does not collect extra data, generate receipts automatically, or alter the current task. Receipt generation continues through the AI Work Receipt skill.
+Ticket Buddy itself only presents Codex activity and provides companionship. It does not collect extra data, run the CLI, or alter the current task. Manual receipts use the AI Work Receipt skill. If [automatic saving](cli.en.md#automatic-saving) is enabled separately, an independent Codex `Stop` hook quietly refreshes today's receipt; that behavior is not controlled by the pet animation.
 
 ## Install the skill and pet together
 

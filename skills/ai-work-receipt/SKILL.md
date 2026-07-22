@@ -39,13 +39,13 @@ npx --yes codex-work-receipt@latest --latest --lang zh-CN --theme classic
 Replace only the mode and optional flags according to the request.
 
 3. Let the CLI open the generated HTML unless the user requested `--no-open`.
-4. On success, report the HTML path and tell the user to scan the official mini-program code first, then the adjacent data QR code.
+4. On success, report both the HTML path and the `.cwr.json` WeChat import file path. Tell the user to send the import file to WeChat File Transfer, open the official mini program, and choose “Import from chat file”. If the CLI reports that a single data QR is available, mention scanning as an optional shortcut; never instruct the user to scan multipart codes.
 5. When `--hours` was used, explicitly state that the receipt is a private rolling summary and will not enter AI Work Cooperative statistics.
 
 ## Privacy and failures
 
 - Do not read, quote, summarize, or expose prompt text, response text, code, project paths, or file names from Codex sessions.
-- Do not upload session data or add custom mini-program codes. The CLI reads numerical metadata locally and uses the fixed official mini-program code.
+- Do not upload session data or add custom mini-program codes. The CLI reads numerical metadata locally and uses the fixed official mini-program code. Sending the privacy-safe `.cwr.json` file through WeChat is an explicit user action, not an automatic CLI upload.
 - If `npx` needs network permission to fetch the package, request the narrow permission needed to run it.
 - If no Codex session is found, report that the user must complete at least one Codex task locally before generating a receipt.
 - If generation fails, return the CLI error concisely and do not claim that a receipt was created.

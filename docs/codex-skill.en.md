@@ -4,6 +4,8 @@
 
 AI Work Receipt includes a Codex Skill that converts natural-language requests into the appropriate CLI options.
 
+The skill remains a manual receipt entry point in either saving mode. With automatic saving enabled, you can still ask Codex for another range such as the latest session or this week. Manual-only mode does not disable the skill. Configure automatic saving with `npx codex-work-receipt@latest --setup --lang en`; see [automatic saving in the CLI guide](cli.en.md#automatic-saving).
+
 ## Install
 
 ```bash
