@@ -107,6 +107,8 @@ test("cwr-file-v1 使用与二维码相同的隐私安全传输投影", () => {
   assert.equal(transferFile.envelope.format, "codex-work-receipt");
   assert.equal(transferFile.envelope.file_version, 1);
   assert.equal(transferFile.envelope.payload_schema, "cwr2");
+  assert.equal("x" in decoded, false);
+  assert.doesNotMatch(transferFile.content, /cache_hit_rate|activity_by_hour|tool_usage/);
   assert.match(transferFile.envelope.integrity.digest, /^[a-f0-9]{64}$/);
   assert.doesNotMatch(
     transferFile.content,

@@ -33,6 +33,25 @@ const metrics = {
     total_tokens: 14_000,
   },
   models: ["test-model"],
+  insights: {
+    cache_hit_rate: 0.8333,
+    per_turn: {
+      total_tokens: 1_750,
+      output_tokens: 250,
+      tool_calls: 5.25,
+      work_duration_ms: 450_000,
+    },
+    latency_ms: {
+      first_token: { sample_count: 8, p50: 1_000, p90: 1_800 },
+      turn: { sample_count: 8, p50: 300_000, p90: 600_000 },
+    },
+    activity_by_hour: Array.from({ length: 24 }, (_, hour) => hour === 10 ? 5 : 0),
+    model_usage: [{ model: "test-model", count: 8 }],
+    tool_usage: [
+      { category: "terminal", count: 30 },
+      { category: "file-edit", count: 12 },
+    ],
+  },
   workProfileId: "toolchain-commander",
   workPoints: 520,
 };
@@ -58,6 +77,17 @@ test("英文 HTML 会完整本地化主要小票内容", () => {
   assert.match(html, /Latest session/);
   assert.match(html, /Toolchain Commander/);
   assert.match(html, /SHIFT PAY/);
+  assert.match(html, /Efficiency &amp; work structure/);
+  assert.match(html, /Cache hit rate/);
+  assert.match(html, /83\.3%/);
+  assert.match(html, /Per-turn efficiency/);
+  assert.match(html, /P50 1s/);
+  assert.match(html, /P90 1\.8s/);
+  assert.match(html, /Work-time heatmap/);
+  assert.equal((html.match(/class="heatmap-cell"/g) || []).length, 24);
+  assert.match(html, /Model structure/);
+  assert.match(html, /Tool structure/);
+  assert.match(html, /File editing/);
   assert.match(html, /Classic White/);
   assert.match(html, /Vintage Pink/);
   assert.match(html, /Night Shift Green/);
@@ -84,6 +114,23 @@ test("英文 HTML 会完整本地化主要小票内容", () => {
   assert.match(html, /href="https:\/\/modelflare\.dev\/sign-up\?partner=OB9YXNSEEGOL"/);
   assert.match(html, /<img src="data:image\/png;base64,[A-Za-z0-9+/=]+" alt="ModelFlare logo"/);
   assert.equal((html.match(/target="_blank" rel="noopener noreferrer"/g) || []).length, 3);
+  assert.match(html, /<details class="sidebar-card sidebar-features" data-feature-details>/);
+  assert.match(html, /More receipt features/);
+  assert.match(html, /12 commands/);
+  assert.match(html, /Generate the last 3 hours/);
+  assert.match(html, /npx codex-work-receipt@latest --hours 3 --lang en/);
+  assert.match(html, /npx codex-work-receipt@latest --install-companion --lang en/);
+  assert.equal((html.match(/data-copy-command=/g) || []).length, 12);
+  assert.match(html, /navigator\.clipboard\?\.writeText/);
+  assert.match(html, /document\.execCommand\("copy"\)/);
+  const featureStyleStart = html.indexOf(".sidebar-features {");
+  const featureStyleEnd = html.indexOf(".toolbar {", featureStyleStart);
+  const featureStyles = html.slice(featureStyleStart, featureStyleEnd);
+  assert.match(featureStyles, /--feature-paper: #f6f2e9/);
+  assert.match(featureStyles, /background: var\(--feature-paper\)/);
+  assert.match(featureStyles, /background: var\(--feature-command\)/);
+  assert.match(featureStyles, /background: #fff/);
+  assert.doesNotMatch(featureStyles, /background: #(?:101010|1a1a1a|282828|333)\b/);
   assert.doesNotMatch(html, /raw\.githubusercontent\.com/);
   assert.match(html, /id="save-receipt-image"/);
   assert.match(html, /\.theme-button:first-child/);
@@ -105,6 +152,7 @@ test("英文 HTML 会完整本地化主要小票内容", () => {
   assert.match(exportMarkup, /paper transfer-stub/);
   assert.doesNotMatch(exportMarkup, /theme-switcher|save-receipt-image|class="privacy"/);
   assert.doesNotMatch(exportMarkup, /github-star-link|Star on GitHub|sidebar|Changelog|ModelFlare/);
+  assert.doesNotMatch(exportMarkup, /More receipt features|data-copy-command/);
   assert.match(html, /function sanitizeExportNode/);
   assert.match(html, /function normalizeExportTextLayout/);
   assert.match(html, /\.meta > div, \.receipt-row > span, \.receipt-row > strong, \.salary-line > span, \.salary-line > strong/);
@@ -129,6 +177,12 @@ test("中文 HTML 展示对应的 GitHub Star 引导", () => {
   assert.match(html, /支持项目/);
   assert.match(html, /更新日志/);
   assert.match(html, /赞助伙伴/);
+  assert.match(html, /更多小票功能/);
+  assert.match(html, /12 项/);
+  assert.match(html, /生成最近 3 小时小票/);
+  assert.match(html, /npx codex-work-receipt@latest --hours 3/);
+  assert.doesNotMatch(html, /--hours 3 --lang en/);
+  assert.match(html, /<\/div>\s*<details class="sidebar-card sidebar-features" data-feature-details>/);
   assert.equal(html.split(OPEN_SOURCE_REPOSITORY_URL).length - 1, 2);
 });
 

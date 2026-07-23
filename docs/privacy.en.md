@@ -7,10 +7,10 @@ AI Work Receipt reads Codex sessions, computes metrics, and renders receipts loc
 ## What it reads
 
 - `~/.codex/sessions/**/*.jsonl` by default
-- Event types, timestamps, model names, and numerical metadata
-- Metrics such as turns, tool calls, Tokens, duration, and interruptions
+- Event types, timestamps, model names, privacy-safe tool categories, and numerical metadata
+- Metrics such as turns, tool calls, Tokens, duration, interruptions, cache hit rate, latency percentiles, and hourly distribution
 
-Session logs are parsed locally in bounded chunks, one JSONL row at a time. After each row is parsed, only fields needed for metrics remain in memory; prompts, responses, images, and tool output are discarded from the in-memory statistics representation.
+Session logs are parsed locally in bounded chunks, one JSONL row at a time. Raw tool names are immediately mapped to stable categories. Prompts, responses, images, raw tool names, tool arguments, commands, and tool output are discarded from the in-memory statistics representation.
 
 ## What receipts exclude
 

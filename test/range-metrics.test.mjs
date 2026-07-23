@@ -123,6 +123,62 @@ test("本周范围从周一开始，不等同于最近七天", () => {
   assert.equal(metrics.tokens.total_tokens, 250);
 });
 
+test("效率洞察包含缓存、每轮效率、延迟分位、热力图和使用结构", () => {
+  const insightSession = {
+    sessionId: "insight-session",
+    rows: [
+      { timestamp: "2026-07-18T00:00:00.000Z", type: "turn_context", payload: { model: "model-a" } },
+      { timestamp: "2026-07-18T00:10:00.000Z", type: "event_msg", payload: { type: "task_complete", duration_ms: 1_000, time_to_first_token_ms: 100 } },
+      { timestamp: "2026-07-18T00:11:00.000Z", type: "response_item", payload: { type: "function_call", tool_category: "terminal" } },
+      { timestamp: "2026-07-18T00:12:00.000Z", type: "event_msg", payload: { type: "token_count", info: { total_token_usage: { input_tokens: 100, cached_input_tokens: 50, output_tokens: 40, reasoning_output_tokens: 10, total_tokens: 140 } } } },
+      { timestamp: "2026-07-18T04:00:00.000Z", type: "turn_context", payload: { model: "model-b" } },
+      { timestamp: "2026-07-18T04:10:00.000Z", type: "event_msg", payload: { type: "task_complete", duration_ms: 3_000, time_to_first_token_ms: 300 } },
+      { timestamp: "2026-07-18T04:11:00.000Z", type: "response_item", payload: { type: "custom_tool_call", tool_category: "file-edit" } },
+      { timestamp: "2026-07-18T04:12:00.000Z", type: "event_msg", payload: { type: "token_count", info: { total_token_usage: { input_tokens: 200, cached_input_tokens: 100, output_tokens: 80, reasoning_output_tokens: 20, total_tokens: 280 } } } },
+    ],
+  };
+
+  const metrics = collectMetrics(
+    [insightSession],
+    resolveRange("today", "UTC", new Date("2026-07-18T12:00:00.000Z")),
+  );
+
+  assert.equal(metrics.insights.cache_hit_rate, 0.5);
+  assert.deepEqual(metrics.insights.per_turn, {
+    total_tokens: 140,
+    output_tokens: 40,
+    tool_calls: 1,
+    work_duration_ms: 2_000,
+  });
+  assert.deepEqual(metrics.insights.latency_ms.first_token, { sample_count: 2, p50: 200, p90: 280 });
+  assert.deepEqual(metrics.insights.latency_ms.turn, { sample_count: 2, p50: 2_000, p90: 2_800 });
+  assert.equal(metrics.insights.activity_by_hour.length, 24);
+  assert.equal(metrics.insights.activity_by_hour[0], 1);
+  assert.equal(metrics.insights.activity_by_hour[4], 1);
+  assert.deepEqual(metrics.insights.model_usage, [
+    { model: "model-a", count: 1 },
+    { model: "model-b", count: 1 },
+  ]);
+  assert.deepEqual(metrics.insights.tool_usage, [
+    { category: "file-edit", count: 1 },
+    { category: "terminal", count: 1 },
+  ]);
+});
+
+test("日期范围内的轮次沿用当时模型而不是范围结束后的模型", () => {
+  const metrics = collectMetrics([{
+    sessionId: "model-boundary-session",
+    rows: [
+      { timestamp: "2026-07-17T23:50:00.000Z", type: "turn_context", payload: { model: "model-before" } },
+      { timestamp: "2026-07-18T01:00:00.000Z", type: "event_msg", payload: { type: "task_complete", duration_ms: 1_000, time_to_first_token_ms: 100 } },
+      { timestamp: "2026-07-19T00:10:00.000Z", type: "turn_context", payload: { model: "model-after" } },
+    ],
+  }], resolveRange("today", "UTC", new Date("2026-07-18T12:00:00.000Z")));
+
+  assert.deepEqual(metrics.models, ["model-before"]);
+  assert.deepEqual(metrics.insights.model_usage, [{ model: "model-before", count: 1 }]);
+});
+
 test("默认输出文件名携带统计日期范围", () => {
   const today = resolveRange("today", "UTC", new Date("2026-07-18T12:00:00.000Z"));
   const lastSevenDays = resolveRange("last-7-days", "UTC", new Date("2026-07-18T12:00:00.000Z"));

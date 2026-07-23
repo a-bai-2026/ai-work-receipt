@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { rowDate } from "../lib/time.mjs";
+import { classifyToolName } from "../lib/tool-category.mjs";
 
 const READ_CHUNK_BYTES = 256 * 1024;
 const MAX_JSONL_ROW_BYTES = 64 * 1024 * 1024;
@@ -70,6 +71,11 @@ function compactPayload(rowType, value) {
     if (firstTokenMs !== null) payload.time_to_first_token_ms = firstTokenMs;
     const totalTokenUsage = compactTokenUsage(value.info?.total_token_usage);
     if (totalTokenUsage) payload.info = { total_token_usage: totalTokenUsage };
+  } else if (
+    rowType === "response_item" &&
+    (value.type === "custom_tool_call" || value.type === "function_call")
+  ) {
+    payload.tool_category = classifyToolName(value.name);
   }
 
   return Object.keys(payload).length ? payload : null;

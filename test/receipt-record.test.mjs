@@ -48,10 +48,17 @@ test("结构记录只包含统计和隐私声明", () => {
   assert.equal(record.presentation.work_profile, "toolchain-commander");
   assert.equal(record.presentation.work_title, "工具链指挥官");
   assert.equal(record.period.range_start_date, "2026-07-17");
+  assert.equal(record.stats.insights.cache_hit_rate, 0.8);
+  assert.equal(record.stats.insights.per_turn.total_tokens, 30);
+  assert.equal(record.stats.insights.per_turn.tool_calls, 2);
+  assert.equal(record.stats.insights.activity_by_hour.length, 24);
   assert.equal(record.privacy.contains_prompts, false);
   assert.equal(record.privacy.contains_code, false);
+  assert.equal(record.privacy.contains_tool_names, false);
+  assert.equal(record.privacy.contains_tool_arguments, false);
+  assert.equal(record.privacy.contains_tool_output, false);
   assert.equal(record.manifest.fact_count, 0);
-  assert.doesNotMatch(serialized, /"prompt_text":|"response_text":|"file_path":|"filename":/);
+  assert.doesNotMatch(serialized, /"prompt_text":|"response_text":|"file_path":|"filename":|"tool_name":|"tool_arguments":|"tool_output":/);
 
   const updated = buildReceiptRecord({ ...metrics, toolCalls: 99, endAt: new Date("2026-07-16T17:00:00.000Z") });
   assert.equal(updated.id, record.id);

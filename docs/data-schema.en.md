@@ -12,11 +12,25 @@ The full receipt schema is currently version `2`; rolling-hour summaries remain 
 - `generated_at`: generation time
 - `source`: data source, selected `scope`, and collector version
 - `period`: actual activity times, timezone, and `range_start_date` / `range_end_date` calendar boundaries
-- `stats`: turns, messages, tools, Tokens, duration, and related metrics
+- `stats`: turns, messages, tools, Tokens, duration, and detailed local efficiency insights
 - `presentation`: default theme, language-neutral `work_profile`, localized role, review, and AI work points
 - `privacy`: explicit declaration of excluded sensitive content
 
 The `id` remains stable for the same session, day, or calendar-boundary pair. Regeneration updates the record rather than creating duplicate history. `source.snapshot_hash` detects metric changes.
+
+### Detailed local efficiency insights
+
+`stats.insights` in the full JSON contains:
+
+- `cache_hit_rate`: `cached_input_tokens / input_tokens`, or `0` when input is zero
+- `per_turn`: total Tokens, output Tokens, tool calls, and average completion duration per completed turn
+- `latency_ms.first_token`: sample count plus P50 and P90 first-token latency
+- `latency_ms.turn`: sample count plus P50 and P90 completed-turn duration
+- `activity_by_hour`: 24 hourly buckets in the receipt timezone; each completed or interrupted turn adds one
+- `model_usage`: completed-turn counts attributed to each model
+- `tool_usage`: privacy-safe category counts for terminal, file editing, browser, research, media, multi-agent, planning, integrations, and other tools
+
+Percentiles use linear interpolation between adjacent samples and are rounded to milliseconds. Tool classification retains only stable categories, not raw tool names, arguments, commands, or output.
 
 ## WeChat import file
 
@@ -36,6 +50,8 @@ Each run writes a `*.cwr.json` file beside the HTML:
 ```
 
 `payload` is exactly the compact structure obtained after decoding a QR payload. `integrity.digest` is a full SHA-256 over canonical payload JSON. It detects corruption but is not a source signature. The mini program must treat every file as untrusted input, enforce a size limit, validate versions, fields, numeric bounds, unique fact IDs, manifests, and content hashes, then persist atomically only after confirmation.
+
+To preserve compatibility with existing mini programs, `stats.insights` currently stays in the local full JSON and HTML and is not added to the compact `cwr1` / `cwr2` payload. The compact payload continues to carry the existing accounting metrics.
 
 Canonicalization recursively sorts every object's keys using JavaScript's default string order (UTF-16 code units), preserves array order, uses JSON primitive types, and emits no whitespace or trailing newline. Calculate SHA-256 over the resulting UTF-8 bytes. Use the digest in `docs/fixtures/cwr-file-v1.json` to cross-check another implementation.
 

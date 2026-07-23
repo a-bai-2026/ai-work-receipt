@@ -5,3 +5,4 @@ codex-work-receipt-output/
 *.log
 coverage/
 tmp/
+*.tgz

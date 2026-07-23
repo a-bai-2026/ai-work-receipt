@@ -62,6 +62,151 @@ function formatDateKey(value, locale) {
   return locale === "en" ? `${match[2]}/${match[3]}/${match[1]}` : `${match[1]}/${match[2]}/${match[3]}`;
 }
 
+function formatDecimal(value, locale, maximumFractionDigits = 1) {
+  return new Intl.NumberFormat(locale === "en" ? "en-US" : "zh-CN", {
+    maximumFractionDigits,
+  }).format(Math.max(0, Number(value || 0)));
+}
+
+function formatPercent(value, locale) {
+  return new Intl.NumberFormat(locale === "en" ? "en-US" : "zh-CN", {
+    style: "percent",
+    maximumFractionDigits: 1,
+  }).format(Math.min(1, Math.max(0, Number(value || 0))));
+}
+
+function formatSeconds(milliseconds, locale) {
+  return `${formatDecimal(Number(milliseconds || 0) / 1000, locale)}s`;
+}
+
+function renderBreakdown(items, { key, labels = {}, unit, emptyLabel, locale }) {
+  if (!items.length) return `<p class="structure-empty">${escapeHtml(emptyLabel)}</p>`;
+  const maximum = Math.max(1, ...items.map((item) => Number(item.count || 0)));
+  return items.slice(0, 6).map((item) => {
+    const name = String(item[key] || "");
+    const label = labels[name] || name;
+    const count = Math.max(0, Number(item.count || 0));
+    const width = count ? Math.max(6, Math.round((count / maximum) * 100)) : 0;
+    return `
+          <div class="structure-row">
+            <span class="structure-name" title="${escapeHtml(label)}">${escapeHtml(label)}</span>
+            <span class="structure-bar" aria-hidden="true"><i style="width:${width}%"></i></span>
+            <strong>${escapeHtml(`${formatDecimal(count, locale, 0)} ${unit}`)}</strong>
+          </div>`;
+  }).join("");
+}
+
+function renderInsights(record, copy, locale) {
+  const insights = record.stats.insights || {};
+  const perTurn = insights.per_turn || {};
+  const firstToken = insights.latency_ms?.first_token || {};
+  const turnLatency = insights.latency_ms?.turn || {};
+  const activity = Array.from({ length: 24 }, (_, hour) => Number(insights.activity_by_hour?.[hour] || 0));
+  const activityPeak = Math.max(0, ...activity);
+  const heatmapCells = activity.map((count, hour) => {
+    const strength = count && activityPeak ? 16 + Math.round((count / activityPeak) * 84) : 4;
+    const aria = copy.insights.heatmapCell
+      .replaceAll("{hour}", String(hour).padStart(2, "0"))
+      .replaceAll("{count}", formatDecimal(count, locale, 0));
+    return `<span class="heatmap-cell" style="--heat:${strength}%" role="img" aria-label="${escapeHtml(aria)}" title="${escapeHtml(aria)}"></span>`;
+  }).join("");
+  const firstTokenValue = firstToken.sample_count
+    ? `${copy.insights.p50} ${formatSeconds(firstToken.p50, locale)}`
+    : copy.insights.noSamples;
+  const firstTokenDetail = firstToken.sample_count
+    ? `${copy.insights.p90} ${formatSeconds(firstToken.p90, locale)}`
+    : "—";
+  const turnValue = turnLatency.sample_count
+    ? `${copy.insights.p50} ${formatSeconds(turnLatency.p50, locale)}`
+    : copy.insights.noSamples;
+  const turnDetail = turnLatency.sample_count
+    ? `${copy.insights.p90} ${formatSeconds(turnLatency.p90, locale)}`
+    : "—";
+  const modelItems = insights.model_usage?.length
+    ? insights.model_usage
+    : (record.stats.models || []).map((model) => ({ model, count: 0 }));
+  const toolItems = insights.tool_usage || [];
+  const modelRows = renderBreakdown(modelItems, {
+    key: "model",
+    unit: copy.insights.turnsUnit,
+    emptyLabel: copy.insights.noSamples,
+    locale,
+  });
+  const toolRows = renderBreakdown(toolItems, {
+    key: "category",
+    labels: copy.insights.toolCategories,
+    unit: copy.insights.callsUnit,
+    emptyLabel: copy.insights.noSamples,
+    locale,
+  });
+
+  return `
+      <section class="insights" aria-label="${escapeHtml(copy.insights.title)}">
+        <h2 class="insights-title">${escapeHtml(copy.insights.title)}</h2>
+        <div class="insight-metrics">
+          <div class="insight-metric">
+            <span>${escapeHtml(copy.insights.cacheHit)}</span>
+            <strong>${escapeHtml(formatPercent(insights.cache_hit_rate, locale))}</strong>
+            <small>${escapeHtml(formatNumber(record.stats.tokens.cached_input_tokens, locale))} / ${escapeHtml(formatNumber(record.stats.tokens.input_tokens, locale))}</small>
+          </div>
+          <div class="insight-metric">
+            <span>${escapeHtml(copy.insights.perTurn)}</span>
+            <strong>${escapeHtml(`${formatDecimal(perTurn.total_tokens, locale)} Token`)}</strong>
+            <small>${escapeHtml(`${formatDecimal(perTurn.output_tokens, locale)} ${copy.insights.outputTokens} · ${formatDecimal(perTurn.tool_calls, locale)} ${copy.insights.toolCalls}`)}</small>
+          </div>
+          <div class="insight-metric">
+            <span>${escapeHtml(copy.insights.firstTokenLatency)}</span>
+            <strong>${escapeHtml(firstTokenValue)}</strong>
+            <small>${escapeHtml(firstTokenDetail)}</small>
+          </div>
+          <div class="insight-metric">
+            <span>${escapeHtml(copy.insights.turnLatency)}</span>
+            <strong>${escapeHtml(turnValue)}</strong>
+            <small>${escapeHtml(turnDetail)}</small>
+          </div>
+        </div>
+        <div class="heatmap-block">
+          <h3>${escapeHtml(copy.insights.heatmap)}</h3>
+          <div class="heatmap-grid">${heatmapCells}</div>
+          <div class="heatmap-axis" aria-hidden="true"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+        </div>
+        <div class="structure-grid">
+          <section class="structure-group">
+            <h3>${escapeHtml(copy.insights.models)}</h3>${modelRows}
+          </section>
+          <section class="structure-group">
+            <h3>${escapeHtml(copy.insights.tools)}</h3>${toolRows}
+          </section>
+        </div>
+      </section>`;
+}
+
+function renderFeatureCommands(featureCopy, locale) {
+  const languageArgument = locale === "en" ? " --lang en" : "";
+  return featureCopy.groups.map((group) => {
+    const commands = group.commands.map((item) => {
+      const command = `npx codex-work-receipt@latest ${item.args}${languageArgument}`;
+      return `
+          <li class="feature-command">
+            <strong class="feature-command__name">${escapeHtml(item.label)}</strong>
+            <div class="feature-command__action">
+              <code tabindex="0">${escapeHtml(command)}</code>
+              <button class="feature-copy-button" type="button" data-copy-command="${escapeHtml(command)}" aria-label="${escapeHtml(`${featureCopy.copyLabel}: ${item.label}`)}" title="${escapeHtml(featureCopy.copyLabel)}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
+                <span data-copy-label>${escapeHtml(featureCopy.copyLabel)}</span>
+              </button>
+            </div>
+          </li>`;
+    }).join("");
+    return `
+        <section class="feature-group">
+          <h4>${escapeHtml(group.title)}</h4>
+          <ul>${commands}
+          </ul>
+        </section>`;
+  }).join("");
+}
+
 export function renderHtml({ record, dataQrDataUrl = null, miniProgramCodeDataUrl = null, transferFile = null }) {
   const locale = record.locale || DEFAULT_LOCALE;
   const copy = getReceiptCopy(locale);
@@ -114,6 +259,19 @@ export function renderHtml({ record, dataQrDataUrl = null, miniProgramCodeDataUr
     successLabel: copy.downloadSuccess,
     errorLabel: copy.downloadError,
   }).replaceAll("<", "\\u003c");
+  const featureConfig = JSON.stringify({
+    copyLabel: copy.sidebar.features.copyLabel,
+    copiedLabel: copy.sidebar.features.copiedLabel,
+    copyErrorLabel: copy.sidebar.features.copyErrorLabel,
+    copiedStatus: copy.sidebar.features.copiedStatus,
+    copyErrorStatus: copy.sidebar.features.copyErrorStatus,
+  }).replaceAll("<", "\\u003c");
+  const featureCommands = renderFeatureCommands(copy.sidebar.features, locale);
+  const featureCommandCount = copy.sidebar.features.groups
+    .reduce((total, group) => total + group.commands.length, 0);
+  const featureCountLabel = copy.sidebar.features.countLabel
+    .replace("{count}", formatNumber(featureCommandCount, locale));
+  const insights = renderInsights(record, copy, locale);
   const rows = [
     receiptRow(copy.rows.scope, scopeLabel),
     receiptRow(copy.rows.sessions, formatCount(record.stats.session_count, copy.units.sessions, locale)),
@@ -312,6 +470,199 @@ export function renderHtml({ record, dataQrDataUrl = null, miniProgramCodeDataUr
       font-weight: 600;
       line-height: 1.4;
     }
+    .sidebar-features {
+      --feature-ink: #282620;
+      --feature-muted: #756f65;
+      --feature-line: #c9c2b6;
+      --feature-soft-line: #ded7cc;
+      --feature-paper: #f6f2e9;
+      --feature-paper-soft: #fbfaf7;
+      --feature-command: #ece8df;
+      padding: 0;
+      overflow: hidden;
+      border-color: var(--feature-line);
+      background: var(--feature-paper);
+      color: var(--feature-ink);
+      text-align: left;
+      transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+    }
+    .sidebar-features[open] {
+      background: var(--feature-paper-soft);
+      box-shadow: 0 10px 28px rgba(53, 48, 39, .1);
+    }
+    .sidebar-features__summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 12px;
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+      transition: background .15s ease;
+    }
+    .sidebar-features__summary::-webkit-details-marker { display: none; }
+    .sidebar-features__summary:hover { background: #eee8dc; }
+    .sidebar-features__summary .sidebar-card__title {
+      margin: 0;
+      color: var(--feature-ink);
+    }
+    .sidebar-features__summary .sidebar-card__title svg { color: var(--feature-muted); }
+    .sidebar-features__summary:focus-visible {
+      outline: 2px solid var(--feature-ink);
+      outline-offset: -3px;
+    }
+    .sidebar-features__meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+    .sidebar-features__count {
+      color: var(--feature-muted);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      font-size: 9px;
+      white-space: nowrap;
+    }
+    .sidebar-features__chevron {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      color: var(--feature-muted);
+      transition: transform .18s ease;
+    }
+    .sidebar-features[open] .sidebar-features__chevron { transform: rotate(180deg); }
+    .sidebar-features__body {
+      padding: 0 12px 12px;
+      border-top: 1px solid var(--feature-soft-line);
+      background: var(--feature-paper-soft);
+      animation: feature-reveal .15s ease-out;
+    }
+    .sidebar-features .sidebar-features__description {
+      margin: 10px 0 12px;
+      color: var(--feature-muted);
+    }
+    .feature-group + .feature-group {
+      margin-top: 14px;
+      padding-top: 13px;
+      border-top: 1px solid var(--feature-soft-line);
+    }
+    .feature-group h4 {
+      margin: 0 0 8px;
+      color: var(--feature-muted);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .feature-group ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .feature-command + .feature-command {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--feature-soft-line);
+    }
+    .feature-command__name {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--feature-ink);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .feature-command__action {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 5px;
+      align-items: stretch;
+    }
+    .feature-command code {
+      display: block;
+      min-width: 0;
+      padding: 6px;
+      overflow-x: auto;
+      border: 1px solid #d5cfc4;
+      border-radius: 4px;
+      background: var(--feature-command);
+      color: #34312c;
+      font-size: 9px;
+      line-height: 1.35;
+      white-space: nowrap;
+      scrollbar-width: thin;
+      scrollbar-color: #b8b0a4 transparent;
+    }
+    .feature-command code:focus-visible {
+      outline: 2px solid #81786c;
+      outline-offset: 1px;
+    }
+    .feature-copy-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      min-width: 48px;
+      padding: 5px 6px;
+      border: 1px solid #bdb5a9;
+      border-radius: 4px;
+      background: #fff;
+      color: #4c4942;
+      cursor: pointer;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      font-size: 9px;
+      font-weight: 600;
+    }
+    .feature-copy-button:hover { background: #e5dfd4; }
+    .feature-copy-button:focus-visible {
+      outline: 2px solid var(--feature-ink);
+      outline-offset: 2px;
+    }
+    .feature-copy-button svg {
+      width: 11px;
+      height: 11px;
+      flex-shrink: 0;
+    }
+    .feature-copy-button[data-state="success"] {
+      border-color: #78a782;
+      background: #eef7ef;
+      color: #276036;
+    }
+    .feature-copy-button[data-state="error"] {
+      border-color: #c88c84;
+      background: #fff1ef;
+      color: #8b3028;
+    }
+    .feature-copy-status {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    @keyframes feature-reveal {
+      from { opacity: 0; transform: translateY(-3px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (min-width: 1021px) {
+      .sidebar-features[open] {
+        width: 300px;
+        margin-left: -120px;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .sidebar-features,
+      .sidebar-features__summary,
+      .sidebar-features__chevron { transition: none; }
+      .sidebar-features__body { animation: none; }
+    }
     .toolbar {
       display: flex;
       width: 100%;
@@ -452,6 +803,110 @@ export function renderHtml({ record, dataQrDataUrl = null, miniProgramCodeDataUr
       padding: 8px 6px;
       background: var(--accent);
     }
+    .insights-title {
+      margin: 0 0 12px;
+      font-size: 14px;
+      letter-spacing: 0;
+      text-align: center;
+    }
+    .insight-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      border-top: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+    }
+    .insight-metric {
+      min-width: 0;
+      padding: 10px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .insight-metric span,
+    .insight-metric strong,
+    .insight-metric small { display: block; }
+    .insight-metric span {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.35;
+    }
+    .insight-metric strong {
+      margin-top: 5px;
+      font-size: 16px;
+      line-height: 1.2;
+    }
+    .insight-metric small {
+      margin-top: 4px;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 9px;
+      line-height: 1.35;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .heatmap-block,
+    .structure-grid {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--line);
+    }
+    .heatmap-block h3,
+    .structure-group h3 {
+      margin: 0 0 9px;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+    .heatmap-grid {
+      display: grid;
+      grid-template-columns: repeat(24, minmax(0, 1fr));
+      gap: 2px;
+    }
+    .heatmap-cell {
+      display: block;
+      height: 22px;
+      background: color-mix(in srgb, var(--ink) var(--heat), transparent);
+    }
+    .heatmap-axis {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 8px;
+    }
+    .structure-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .structure-group { min-width: 0; }
+    .structure-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(32px, .65fr) auto;
+      gap: 6px;
+      align-items: center;
+      min-width: 0;
+      padding: 4px 0;
+      font-size: 9px;
+    }
+    .structure-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .structure-bar {
+      display: block;
+      height: 4px;
+      background: color-mix(in srgb, var(--ink) 10%, transparent);
+    }
+    .structure-bar i {
+      display: block;
+      height: 100%;
+      background: var(--ink);
+    }
+    .structure-row strong { font-size: 8px; white-space: nowrap; }
+    .structure-empty { margin: 0; color: var(--muted); font-size: 9px; }
     .verdict { text-align: center; }
     .verdict h2 { margin: 0; font-size: 22px; letter-spacing: .04em; }
     .review {
@@ -663,6 +1118,7 @@ export function renderHtml({ record, dataQrDataUrl = null, miniProgramCodeDataUr
         flex: 1 1 160px;
         min-width: 0;
       }
+      .sidebar-features { flex-basis: 100%; }
     }
     @media (max-width: 420px) {
       .layout { padding-inline: 10px; }
@@ -674,6 +1130,7 @@ export function renderHtml({ record, dataQrDataUrl = null, miniProgramCodeDataUr
       .meta { grid-template-columns: 1fr; }
       .meta div:nth-child(even) { text-align: left; }
       .transfer-layout { grid-template-columns: 1fr; }
+      .structure-grid { grid-template-columns: 1fr; }
       .sidebar { flex-direction: column; }
       .sidebar-card { flex-basis: auto; }
     }
@@ -711,6 +1168,10 @@ export function renderHtml({ record, dataQrDataUrl = null, miniProgramCodeDataUr
 
       <div class="divider"></div>
       <section>${rows}</section>
+      <div class="divider"></div>
+
+      ${insights}
+
       <div class="divider"></div>
 
       <section class="verdict">
@@ -768,12 +1229,29 @@ export function renderHtml({ record, dataQrDataUrl = null, miniProgramCodeDataUr
         <span class="sidebar-sponsor__name">ModelFlare<br>modelflare.dev</span>
       </a>
     </div>
+    <details class="sidebar-card sidebar-features" data-feature-details>
+      <summary class="sidebar-features__summary">
+        <span class="sidebar-card__title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" x2="20" y1="19" y2="19"></line></svg>
+          ${escapeHtml(copy.sidebar.features.title)}
+        </span>
+        <span class="sidebar-features__meta">
+          <span class="sidebar-features__count">${escapeHtml(featureCountLabel)}</span>
+          <svg class="sidebar-features__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+        </span>
+      </summary>
+      <div class="sidebar-features__body">
+        <p class="sidebar-features__description">${escapeHtml(copy.sidebar.features.description)}</p>${featureCommands}
+        <span class="feature-copy-status" data-feature-copy-status role="status" aria-live="polite"></span>
+      </div>
+    </details>
   </aside>
   </div>
   <script>${inlineScript(DOM_TO_IMAGE_SOURCE)}</script>
   <script>
     const exportConfig = ${exportConfig};
     const transferConfig = ${transferConfig};
+    const featureConfig = ${featureConfig};
     const themes = new Set(["classic", "diner", "payroll"]);
     const buttons = [...document.querySelectorAll("[data-theme-value]")];
     function applyTheme(theme) {
@@ -786,6 +1264,75 @@ export function renderHtml({ record, dataQrDataUrl = null, miniProgramCodeDataUr
     let savedTheme = null;
     try { savedTheme = localStorage.getItem("codex-work-receipt-theme"); } catch {}
     applyTheme(savedTheme || document.documentElement.dataset.theme);
+
+    const featureDetails = document.querySelector("[data-feature-details]");
+    if (featureDetails) {
+      try {
+        const savedFeatureState = localStorage.getItem("codex-work-receipt-features-open");
+        if (savedFeatureState === "true") featureDetails.open = true;
+        if (savedFeatureState === "false") featureDetails.open = false;
+      } catch {}
+      featureDetails.addEventListener("toggle", () => {
+        try { localStorage.setItem("codex-work-receipt-features-open", String(featureDetails.open)); } catch {}
+      });
+    }
+
+    function fallbackCopyText(value) {
+      const textarea = document.createElement("textarea");
+      textarea.value = value;
+      textarea.setAttribute("readonly", "");
+      Object.assign(textarea.style, {
+        position: "fixed",
+        left: "-10000px",
+        top: "0",
+        opacity: "0",
+        pointerEvents: "none",
+      });
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length);
+      const copied = document.execCommand("copy");
+      textarea.remove();
+      if (!copied) throw new Error("Clipboard copy was rejected");
+    }
+
+    async function copyFeatureCommand(value) {
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(value);
+          return;
+        } catch {}
+      }
+      fallbackCopyText(value);
+    }
+
+    const featureCopyStatus = document.querySelector("[data-feature-copy-status]");
+    document.querySelectorAll("[data-copy-command]").forEach((button) => {
+      let resetTimer = null;
+      button.addEventListener("click", async () => {
+        const label = button.querySelector("[data-copy-label]");
+        clearTimeout(resetTimer);
+        button.disabled = true;
+        try {
+          await copyFeatureCommand(button.dataset.copyCommand || "");
+          button.dataset.state = "success";
+          if (label) label.textContent = featureConfig.copiedLabel;
+          if (featureCopyStatus) featureCopyStatus.textContent = featureConfig.copiedStatus;
+        } catch (error) {
+          console.error(error);
+          button.dataset.state = "error";
+          if (label) label.textContent = featureConfig.copyErrorLabel;
+          if (featureCopyStatus) featureCopyStatus.textContent = featureConfig.copyErrorStatus;
+        } finally {
+          button.disabled = false;
+          resetTimer = setTimeout(() => {
+            delete button.dataset.state;
+            if (label) label.textContent = featureConfig.copyLabel;
+          }, 1800);
+        }
+      });
+    });
 
     const downloadFileButton = document.getElementById("download-import-file");
     const downloadStatus = document.getElementById("download-status");

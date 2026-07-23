@@ -12,11 +12,25 @@
 - `generated_at`：生成时间
 - `source`：数据来源、`scope` 统计范围和采集器版本
 - `period`：实际活动起止时间、时区，以及 `range_start_date` / `range_end_date` 自然日边界
-- `stats`：轮次、消息、工具、Token、时长等统计
+- `stats`：轮次、消息、工具、Token、时长，以及本地详细效率洞察
 - `presentation`：默认主题、语言无关的 `work_profile`、本地化工种、点评和 AI 工分
 - `privacy`：明确声明不包含的敏感内容
 
 同一个会话、同一天或同一组自然日边界的 `id` 保持稳定；重复生成会更新该记录。`source.snapshot_hash` 用于识别统计内容是否发生变化。
+
+### 本地详细效率洞察
+
+完整 JSON 的 `stats.insights` 包含：
+
+- `cache_hit_rate`：`cached_input_tokens / input_tokens`，输入为零时记为 `0`
+- `per_turn`：按已完成轮次计算的总 Token、输出 Token、工具调用和平均完成耗时
+- `latency_ms.first_token`：首 Token 延迟的样本数、P50 和 P90
+- `latency_ms.turn`：已完成整轮耗时的样本数、P50 和 P90
+- `activity_by_hour`：按小票时区统计的 24 个小时槽；每个完成或中断轮次计一次
+- `model_usage`：模型对应的完成轮次数量
+- `tool_usage`：脱敏工具类别及数量，包括终端、文件编辑、浏览器、检索、媒体、多代理、规划、外部集成和其他类别
+
+百分位使用相邻样本线性插值后取整。工具分类只保留稳定类别，不保留原始工具名、参数、命令或输出。
 
 ## 微信导入文件
 
@@ -36,6 +50,8 @@
 ```
 
 `payload` 与二维码解压后的精简结构完全相同。`integrity.digest` 是对规范化 payload JSON 计算的完整 SHA-256，用于发现损坏，但不是来源签名。小程序必须把文件视为不可信输入，限制文件大小，校验版本、字段、数值范围、factId 唯一性、manifest 和 content hash，并在用户确认后原子入库。
+
+为保持现有小程序兼容，`stats.insights` 当前只存在于本地完整 JSON 和 HTML，不进入 `cwr1` / `cwr2` 精简载荷。精简载荷继续携带原有记账统计。
 
 规范化规则是：递归按 JavaScript 默认字符串排序（UTF-16 code unit 顺序）排列每个对象的键，保持数组元素顺序，使用 JSON 原始类型，不添加空白或换行，再对生成的 UTF-8 字节计算 SHA-256。兼容实现可用 `docs/fixtures/cwr-file-v1.json` 的 digest 做交叉验证。
 

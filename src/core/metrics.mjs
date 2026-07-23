@@ -1,4 +1,5 @@
 import { dateKey, rowDate } from "../lib/time.mjs";
+import { toolCategoryForRow } from "../lib/tool-category.mjs";
 import {
   calendarDayCount,
   isCalendarScope,
@@ -19,6 +20,83 @@ function zeroUsage() {
 
 function addUsage(target, source) {
   for (const key of Object.keys(target)) target[key] += Number(source[key] || 0);
+}
+
+function increment(map, key, amount = 1) {
+  if (!key) return;
+  map.set(key, Number(map.get(key) || 0) + amount);
+}
+
+function roundedRatio(numerator, denominator, digits = 2) {
+  if (!denominator) return 0;
+  const scale = 10 ** digits;
+  return Math.round((Number(numerator || 0) / denominator) * scale) / scale;
+}
+
+function percentile(samples, quantile) {
+  if (!samples.length) return 0;
+  const sorted = [...samples].sort((left, right) => left - right);
+  const position = (sorted.length - 1) * quantile;
+  const lowerIndex = Math.floor(position);
+  const upperIndex = Math.ceil(position);
+  const lower = sorted[lowerIndex];
+  const upper = sorted[upperIndex];
+  return Math.round(lower + (upper - lower) * (position - lowerIndex));
+}
+
+function usageRows(map, keyName) {
+  return [...map.entries()]
+    .map(([name, count]) => ({ [keyName]: name, count }))
+    .sort((left, right) => right.count - left.count || left[keyName].localeCompare(right[keyName]));
+}
+
+function localHour(date, timezone) {
+  if (!date) return null;
+  const hour = Number(new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone,
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).format(date));
+  return Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : null;
+}
+
+function buildInsights({
+  tokens,
+  completedTurns,
+  toolCalls,
+  completedDurationMs,
+  firstTokenSamples,
+  turnDurationSamples,
+  activityByHour,
+  modelUsage,
+  toolUsage,
+}) {
+  const inputTokens = Math.max(0, Number(tokens.input_tokens || 0));
+  const cachedInputTokens = Math.max(0, Number(tokens.cached_input_tokens || 0));
+  return {
+    cache_hit_rate: inputTokens ? Math.min(1, roundedRatio(cachedInputTokens, inputTokens, 4)) : 0,
+    per_turn: {
+      total_tokens: roundedRatio(tokens.total_tokens, completedTurns),
+      output_tokens: roundedRatio(tokens.output_tokens, completedTurns),
+      tool_calls: roundedRatio(toolCalls, completedTurns),
+      work_duration_ms: Math.round(roundedRatio(completedDurationMs, completedTurns)),
+    },
+    latency_ms: {
+      first_token: {
+        sample_count: firstTokenSamples.length,
+        p50: percentile(firstTokenSamples, 0.5),
+        p90: percentile(firstTokenSamples, 0.9),
+      },
+      turn: {
+        sample_count: turnDurationSamples.length,
+        p50: percentile(turnDurationSamples, 0.5),
+        p90: percentile(turnDurationSamples, 0.9),
+      },
+    },
+    activity_by_hour: [...activityByHour],
+    model_usage: usageRows(modelUsage, "model"),
+    tool_usage: usageRows(toolUsage, "category"),
+  };
 }
 
 function sessionTokenUsage(rows, range) {
@@ -78,11 +156,17 @@ export function collectMetrics(sessions, range) {
   let toolCalls = 0;
   let interruptions = 0;
   let workDurationMs = 0;
+  let completedDurationMs = 0;
   let totalFirstTokenMs = 0;
   let firstTokenSamples = 0;
+  const firstTokenLatencySamples = [];
+  const turnDurationSamples = [];
   const timestamps = [];
   const activeDateKeys = new Set();
   const models = new Set();
+  const modelUsage = new Map();
+  const toolUsage = new Map();
+  const activityByHour = Array(24).fill(0);
 
   for (const session of sessions) {
     const scopedRows = isCalendarScope(range.scope) || isTimeWindowScope(range.scope)
@@ -94,40 +178,70 @@ export function collectMetrics(sessions, range) {
     sessionIds.push(session.sessionId);
     addUsage(tokens, sessionTokenUsage(session.rows, range));
 
-    for (const row of scopedRows) {
+    let activeModel = null;
+    let unattributedModelTurns = 0;
+    let sessionHasSelectedModel = false;
+    for (const row of session.rows) {
+      if (row.type === "turn_context" && row.payload?.model) activeModel = row.payload.model;
+      const selected = (!isCalendarScope(range.scope) && !isTimeWindowScope(range.scope))
+        || isDateInRange(rowDate(row), range);
+      if (!selected) continue;
       const date = rowDate(row);
       if (date) {
         timestamps.push(date);
         activeDateKeys.add(dateKey(date, range.timezone));
       }
 
-      if (row.type === "turn_context" && row.payload?.model) models.add(row.payload.model);
+      if (row.type === "turn_context" && row.payload?.model) {
+        models.add(row.payload.model);
+        sessionHasSelectedModel = true;
+      }
       if (row.type === "event_msg") {
         const eventType = row.payload?.type;
         if (eventType === "task_complete") {
+          const hasDuration = Number.isFinite(row.payload.duration_ms);
+          const durationMs = hasDuration ? Math.max(0, Number(row.payload.duration_ms)) : 0;
           completedTurns += 1;
-          workDurationMs += Number(row.payload.duration_ms || 0);
+          workDurationMs += durationMs;
+          completedDurationMs += durationMs;
+          if (hasDuration) turnDurationSamples.push(durationMs);
+          if (activeModel) {
+            models.add(activeModel);
+            sessionHasSelectedModel = true;
+            increment(modelUsage, activeModel);
+          }
+          else unattributedModelTurns += 1;
+          const hour = localHour(date, range.timezone);
+          if (hour !== null) activityByHour[hour] += 1;
           if (Number.isFinite(row.payload.time_to_first_token_ms)) {
-            totalFirstTokenMs += row.payload.time_to_first_token_ms;
+            const firstTokenMs = Math.max(0, Number(row.payload.time_to_first_token_ms));
+            totalFirstTokenMs += firstTokenMs;
             firstTokenSamples += 1;
+            firstTokenLatencySamples.push(firstTokenMs);
           }
         } else if (eventType === "user_message") userMessages += 1;
         else if (eventType === "turn_aborted") {
           interruptions += 1;
-          workDurationMs += Number(row.payload.duration_ms || 0);
+          workDurationMs += Math.max(0, Number(row.payload.duration_ms || 0));
+          const hour = localHour(date, range.timezone);
+          if (hour !== null) activityByHour[hour] += 1;
         }
       }
 
-      if (
-        row.type === "response_item" &&
-        (row.payload?.type === "custom_tool_call" || row.payload?.type === "function_call")
-      ) toolCalls += 1;
+      const toolCategory = toolCategoryForRow(row);
+      if (toolCategory) {
+        toolCalls += 1;
+        increment(toolUsage, toolCategory);
+      }
     }
 
     const fallbackModel = [...session.rows]
       .reverse()
       .find((row) => row.type === "turn_context" && row.payload?.model)?.payload?.model;
-    if (fallbackModel) models.add(fallbackModel);
+    if (fallbackModel && (!sessionHasSelectedModel || unattributedModelTurns)) {
+      models.add(fallbackModel);
+      if (unattributedModelTurns) increment(modelUsage, fallbackModel, unattributedModelTurns);
+    }
   }
 
   if (!scopedSessions.length || !timestamps.length) throw new Error(emptyRangeMessage(range));
@@ -159,6 +273,17 @@ export function collectMetrics(sessions, range) {
     tokens,
     models: [...models],
   };
+  metrics.insights = buildInsights({
+    tokens,
+    completedTurns,
+    toolCalls,
+    completedDurationMs,
+    firstTokenSamples: firstTokenLatencySamples,
+    turnDurationSamples,
+    activityByHour,
+    modelUsage,
+    toolUsage,
+  });
   metrics.workProfileId = selectWorkProfileId(metrics);
   metrics.workPoints = calculateWorkPoints(metrics);
   return metrics;

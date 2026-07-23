@@ -20,7 +20,7 @@
   <img src="docs/images/readme-hero.jpg" alt="Three Codex Work Receipt themes" width="920">
 </p>
 
-Codex Work Receipt summarizes turns, tool calls, Tokens, duration, and models, then turns them into playful AI work points, a job title, and a review. Receipts never include prompts, responses, source code, project paths, or file names.
+Codex Work Receipt summarizes turns, tool calls, Tokens, duration, and models. It also reports cache hit rate, per-turn efficiency, P50 / P90 latency, a work-time heatmap, and model/tool structure, then turns the result into playful AI work points, a job title, and a review. Receipts never include prompts, responses, source code, project paths, file names, tool arguments, or tool output.
 
 The cwr2 protocol creates stable privacy-safe facts for each session and calendar day, allowing overlapping today, last-seven-days, and this-week receipts to be deduplicated. Every receipt also produces one `.cwr.json` WeChat import file. Scan import appears only when the complete payload fits in one data QR code.
 
@@ -56,7 +56,7 @@ npx codex-work-receipt@latest --hours 3 --lang en
 
 “Last N hours” is a rolling summary for private history only. It does not participate in AI Work Cooperative deduplicated accounting. Use today, this week, the last seven days, or a specific session when you want accountable canonical facts.
 
-HTML, structured data, and the WeChat import file are written to `./codex-work-receipt-output/` by default. The page can download its `.cwr.json` file and save a high-resolution PNG containing only the full receipt and WeChat mini-program code. See the [CLI guide](docs/cli.en.md).
+HTML, structured data, and the WeChat import file are written to `./codex-work-receipt-output/` by default. The page can download its `.cwr.json` file and save a high-resolution PNG containing only the full receipt and WeChat mini-program code. A “More receipt features” section below the sponsor provides 12 copyable commands for receipt ranges, automatic mode, the Codex skill, and Ticket Buddy. The web controls stay out of the exported image. See the [CLI guide](docs/cli.en.md).
 
 ## Automatic saving or manual only
 

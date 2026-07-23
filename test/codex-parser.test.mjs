@@ -129,7 +129,7 @@ test("大型会话逐块读取并在内存中丢弃提示词与工具输出", ()
     {
       timestamp: "2026-07-21T01:03:00.000Z",
       type: "response_item",
-      payload: { type: "function_call", arguments: largePrivateValue },
+      payload: { type: "function_call", name: "apply_patch", arguments: largePrivateValue },
     },
     {
       timestamp: "2026-07-21T01:04:00.000Z",
@@ -183,6 +183,9 @@ test("大型会话逐块读取并在内存中丢弃提示词与工具输出", ()
     crypto.createHash("sha256").update(Buffer.from(source).subarray(-4096)).digest("hex"),
   );
   assert.doesNotMatch(JSON.stringify(sessions[0].rows), new RegExp(privateMarker));
+  const toolPayload = sessions[0].rows.find((row) => row.type === "response_item")?.payload;
+  assert.deepEqual(toolPayload, { type: "function_call", tool_category: "file-edit" });
+  assert.doesNotMatch(JSON.stringify(sessions[0].rows), /apply_patch/);
 
   const metrics = collectMetrics(
     sessions,
@@ -192,6 +195,7 @@ test("大型会话逐块读取并在内存中丢弃提示词与工具输出", ()
   assert.equal(metrics.completedTurns, 1);
   assert.equal(metrics.userMessages, 1);
   assert.equal(metrics.toolCalls, 1);
+  assert.deepEqual(metrics.insights.tool_usage, [{ category: "file-edit", count: 1 }]);
   assert.equal(metrics.tokens.total_tokens, 100);
 });
 
