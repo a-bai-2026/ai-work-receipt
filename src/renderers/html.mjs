@@ -719,10 +719,15 @@ export function renderHtml({ record, dataQrDataUrl = null, miniProgramCodeDataUr
       from { opacity: 0; transform: translateY(-3px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    @media (min-width: 1021px) {
+    @media (min-width: 1120px) {
+      .sidebar {
+        align-items: center;
+      }
+      .sidebar-card {
+        width: 100%;
+      }
       .sidebar-features[open] {
-        width: 560px;
-        margin-left: -380px;
+        width: clamp(360px, calc(100vw - 880px), 560px);
       }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -1169,7 +1174,7 @@ export function renderHtml({ record, dataQrDataUrl = null, miniProgramCodeDataUr
       line-height: 1.6;
       text-align: center;
     }
-    @media (max-width: 1020px) {
+    @media (max-width: 1119px) {
       .layout {
         grid-template-columns: 1fr;
         max-width: 540px;
@@ -1186,7 +1191,30 @@ export function renderHtml({ record, dataQrDataUrl = null, miniProgramCodeDataUr
         flex: 1 1 160px;
         min-width: 0;
       }
-      .sidebar-features { flex-basis: 100%; }
+      .sidebar-features {
+        width: 100%;
+        max-width: 100%;
+        margin-inline: 0;
+        flex-basis: 100%;
+      }
+      .feature-tabs__list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        overflow: visible;
+      }
+      .feature-tab {
+        width: 100%;
+        min-width: 0;
+        white-space: normal;
+      }
+    }
+    @media (max-width: 560px) {
+      .feature-panel ul { grid-template-columns: 1fr; }
+      .feature-command:nth-child(2) {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed var(--feature-soft-line);
+      }
     }
     @media (max-width: 420px) {
       .layout { padding-inline: 10px; }
@@ -1201,12 +1229,6 @@ export function renderHtml({ record, dataQrDataUrl = null, miniProgramCodeDataUr
       .structure-grid { grid-template-columns: 1fr; }
       .sidebar { flex-direction: column; }
       .sidebar-card { flex-basis: auto; }
-      .feature-panel ul { grid-template-columns: 1fr; }
-      .feature-command:nth-child(2) {
-        margin-top: 10px;
-        padding-top: 10px;
-        border-top: 1px dashed var(--feature-soft-line);
-      }
     }
   </style>
 </head>
